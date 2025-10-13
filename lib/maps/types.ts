@@ -50,8 +50,8 @@ export interface IMapAdapter {
   addMarker(marker: MarkerConfig): string
   removeMarker(markerId: string): void
   clearMarkers(): void
-  on(event: string, handler: (...args: any[]) => void): void
-  off(event: string, handler: (...args: any[]) => void): void
+  on(event: string, handler: (...args: unknown[]) => void): void
+  off(event: string, handler: (...args: unknown[]) => void): void
   getCenter(): LatLng
   getZoom(): number
   getBounds(): Bounds
