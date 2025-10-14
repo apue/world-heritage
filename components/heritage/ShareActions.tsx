@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 
 interface ShareActionsProps {
@@ -19,17 +19,18 @@ export default function ShareActions({
   const pathname = usePathname()
   const [shareUrl, setShareUrl] = useState('')
   const [hasCopied, setHasCopied] = useState(false)
+  const [canShare, setCanShare] = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+
     const origin = window.location.origin
     setShareUrl(`${origin}${pathname}`)
+    setCanShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function')
   }, [pathname])
 
-  const canShare = useMemo(() => typeof navigator !== 'undefined' && !!navigator.share, [])
-
   const handleShare = async () => {
-    if (!shareUrl) return
+    if (!shareUrl || !canShare) return
     try {
       await navigator.share({ title, url: shareUrl })
     } catch (error) {
