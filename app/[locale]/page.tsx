@@ -1,66 +1,144 @@
-import type { LocalizedPageProps } from '@/lib/i18n/types'
-import Link from 'next/link'
+'use client'
 
-const translations = {
-  en: {
-    title: 'World Heritage Explorer',
-    subtitle: 'Discover 1,247 UNESCO World Heritage Sites around the world',
-    exploreMap: 'Explore on Map',
-    browseSites: 'Browse Sites',
-    playGames: 'Play Games',
-  },
-  zh: {
-    title: '世界遗产探索',
-    subtitle: '探索全球 1,247 个联合国教科文组织世界遗产',
-    exploreMap: '在地图上探索',
-    browseSites: '浏览遗产列表',
-    playGames: '玩游戏',
-  },
-}
+/**
+ * Home page - The central hub for World Heritage exploration
+ * Features: Interactive map, search, filters, and site browsing
+ * Previously: /explore page
+ */
 
-export default async function Home({ params }: LocalizedPageProps) {
-  const { locale: rawLocale } = await params
-  const locale = rawLocale as 'en' | 'zh'
-  const t = translations[locale]
+import { useState, useEffect, useMemo } from 'react'
+import dynamic from 'next/dynamic'
+import { useParams } from 'next/navigation'
+import { getAllSites, searchAndFilter, getAllCountries, getSiteStatistics } from '@/lib/data/sites'
+import { HeritageSite, SiteFilters } from '@/lib/data/types'
+import { Locale } from '@/lib/i18n/config'
+import ExploreSidebar from '@/components/explore/ExploreSidebar'
+
+// Dynamic import to avoid SSR issues with Leaflet
+const HeritageMap = dynamic(() => import('@/components/map/HeritageMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading map...</p>
+      </div>
+    </div>
+  ),
+})
+
+export default function HomePage() {
+  const params = useParams()
+  const locale = params.locale as Locale
+
+  // Data state
+  const [allSites, setAllSites] = useState<HeritageSite[]>([])
+  const [filteredSites, setFilteredSites] = useState<HeritageSite[]>([])
+  const [selectedSite, setSelectedSite] = useState<HeritageSite | null>(null)
+
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filters, setFilters] = useState<SiteFilters>({})
+
+  // Mobile sidebar state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+
+  // Get available countries and statistics
+  const availableCountries = useMemo(() => getAllCountries(), [])
+  const statistics = useMemo(() => getSiteStatistics(), [])
+
+  // Load all sites on mount
+  useEffect(() => {
+    const sites = getAllSites()
+    setAllSites(sites)
+    setFilteredSites(sites)
+  }, [])
+
+  // Apply search and filters when they change
+  useEffect(() => {
+    const result = searchAndFilter(searchQuery, filters, locale)
+    setFilteredSites(result.sites)
+  }, [searchQuery, filters, locale])
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-center font-mono text-sm">
-        <h1 className="text-4xl font-bold text-center mb-4">{t.title}</h1>
-        <p className="text-center text-lg mb-8">{t.subtitle}</p>
-        <div className="flex justify-center gap-4 flex-wrap">
-          <Link
-            href={`/${locale}/explore`}
-            className="rounded-lg bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 transition-colors font-semibold shadow-lg"
-          >
-            🗺️ {t.exploreMap}
-          </Link>
-          <Link
-            href={`/${locale}/heritage`}
-            className="rounded-lg bg-purple-600 px-6 py-3 text-white hover:bg-purple-700 transition-colors font-semibold shadow-lg"
-          >
-            📋 {t.browseSites}
-          </Link>
-          <Link
-            href={`/${locale}/games`}
-            className="rounded-lg bg-green-600 px-6 py-3 text-white hover:bg-green-700 transition-colors font-semibold shadow-lg"
-          >
-            🎮 {t.playGames}
-          </Link>
-        </div>
+    <div className="flex h-screen overflow-hidden relative">
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        className="md:hidden fixed top-4 left-4 z-50 bg-white rounded-lg shadow-lg p-3 hover:bg-gray-50 transition-colors"
+        aria-label="Toggle sidebar"
+      >
+        <svg
+          className="w-6 h-6 text-gray-700"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          {isSidebarOpen ? (
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          ) : (
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          )}
+        </svg>
+      </button>
 
-        {/* Language Switcher - we'll add a proper component later */}
-        <div className="mt-8 text-center text-sm">
-          <span className="mr-2">Language:</span>
-          <Link href="/en" className="underline hover:text-blue-600 mr-2">
-            English
-          </Link>
-          <span>|</span>
-          <Link href="/zh" className="underline hover:text-blue-600 ml-2">
-            中文
-          </Link>
+      {/* Sidebar - Mobile: Overlay, Desktop: Always visible */}
+      <div
+        className={`
+          fixed md:relative inset-0 md:inset-auto
+          z-40 md:z-auto
+          transform md:transform-none transition-transform duration-300 ease-in-out
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        `}
+      >
+        {/* Mobile backdrop */}
+        {isSidebarOpen && (
+          <div
+            className="md:hidden absolute inset-0 bg-black bg-opacity-50"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
+        {/* Sidebar content */}
+        <div className="relative h-full">
+          <ExploreSidebar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            filters={filters}
+            onFiltersChange={setFilters}
+            results={filteredSites}
+            totalCount={allSites.length}
+            onSiteSelect={(site) => {
+              setSelectedSite(site)
+              setIsSidebarOpen(false) // Close sidebar on mobile when selecting a site
+            }}
+            selectedSite={selectedSite}
+            availableCountries={availableCountries}
+            statistics={statistics}
+            locale={locale}
+          />
         </div>
       </div>
-    </main>
+
+      {/* Map Area */}
+      <div className="flex-1 relative">
+        <HeritageMap
+          sites={filteredSites}
+          locale={locale}
+          selectedSite={selectedSite}
+          onMarkerClick={setSelectedSite}
+        />
+      </div>
+    </div>
   )
 }

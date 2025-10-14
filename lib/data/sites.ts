@@ -68,6 +68,11 @@ export function searchSites(query: string, locale: Locale): HeritageSite[] {
  */
 export function filterSites(sites: HeritageSite[], filters: SiteFilters): HeritageSite[] {
   return sites.filter((site) => {
+    // Region filter
+    if (filters.regions && filters.regions.length > 0) {
+      if (!filters.regions.includes(site.region)) return false
+    }
+
     // Country filter
     if (filters.countries && filters.countries.length > 0) {
       const hasMatchingCountry = site.isoCodes.some((code) =>
