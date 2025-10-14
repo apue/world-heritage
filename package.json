@@ -14,6 +14,9 @@
     "type-check": "tsc --noEmit",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "prepare:data": "tsx scripts/prepare-data.ts",
+    "prepare:data:full": "bash scripts/data-pipeline/run-all.sh",
+    "prepare:wdpa": "uv run python scripts/data-pipeline/1_extract_wdpa.py",
+    "prepare:merge": "tsx scripts/data-pipeline/2_merge_unesco.ts",
     "prepare": "husky"
   },
   "dependencies": {

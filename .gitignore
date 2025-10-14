@@ -56,6 +56,43 @@ next-env.d.ts
 Thumbs.db
 .DS_Store
 
-# Generated data files (keep source XML)
-/data/*.json
-!/data/whc-*.xml
+# Data files
+/data/raw/          # Raw data sources (download separately)
+/data/processed/    # Intermediate processing results
+!/data/sites.json   # Keep final output
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Python virtual environments
+.venv/
+venv/
+ENV/
+env/
+.python-version
+
+# uv
+.uv/
+uv.lock
+
+#data
+data/raw/

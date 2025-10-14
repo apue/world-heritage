@@ -1,11 +1,15 @@
 /**
- * UNESCO World Heritage Data Processing Script
+ * Merge UNESCO XML data with WDPA components
  *
- * This script:
- * 1. Reads XML files from multiple languages (en, zh)
- * 2. Merges them into a unified JSON structure
- * 3. Cleans and validates the data
- * 4. Outputs a single sites.json file with multi-language support
+ * Input:
+ *   - data/raw/whc-en.xml, whc-zh.xml (UNESCO data)
+ *   - data/processed/components.json (WDPA components)
+ *
+ * Output:
+ *   - data/sites.json (final merged data)
+ *
+ * Usage:
+ *   tsx scripts/data-pipeline/2_merge_unesco.ts
  */
 
 import * as fs from 'fs'
@@ -50,6 +54,31 @@ interface Translation {
   justification: string
 }
 
+// WDPA Component from Python script
+interface WDPAComponent {
+  wdpa_id: string
+  wdpa_pid: string
+  name: string
+  name_orig: string
+  designation: string
+  iucn_category: string
+  status: string
+  status_year: string
+  area_km2: number
+  iso_codes: string[]
+  marine: boolean
+}
+
+// Component site in our data model
+interface ComponentSite {
+  componentId: string
+  parentId: string
+  name: Record<Language, string>
+  area?: number
+  designation?: string
+  // Note: latitude/longitude would come from shapefile (not implemented yet)
+}
+
 // Final processed site structure
 interface ProcessedSite {
   id: string
@@ -83,6 +112,11 @@ interface ProcessedSite {
 
   // Multi-language content
   translations: Record<Language, Translation>
+
+  // Components (optional)
+  hasComponents?: boolean
+  componentCount?: number
+  components?: ComponentSite[]
 }
 
 /**
@@ -138,6 +172,47 @@ async function readXML(lang: Language): Promise<RawXMLRow[]> {
   console.log(`   ✓ Parsed ${rows.length} sites`)
 
   return rows
+}
+
+/**
+ * Load WDPA components from processed JSON
+ */
+function loadWDPAComponents(): Record<string, WDPAComponent[]> {
+  const componentsPath = path.join(process.cwd(), 'data', 'processed', 'components.json')
+
+  if (!fs.existsSync(componentsPath)) {
+    console.log('⚠️  No WDPA components found, skipping component integration...')
+    return {}
+  }
+
+  console.log(`\n📦 Loading WDPA components: ${componentsPath}`)
+  const data = fs.readFileSync(componentsPath, 'utf-8')
+  const components = JSON.parse(data) as Record<string, WDPAComponent[]>
+
+  console.log(`   ✓ Loaded components for ${Object.keys(components).length} sites`)
+
+  return components
+}
+
+/**
+ * Convert WDPA components to ComponentSite format
+ */
+function convertToComponentSites(
+  parentId: string,
+  wdpaComponents: WDPAComponent[]
+): ComponentSite[] {
+  return wdpaComponents.map((comp) => ({
+    componentId: comp.wdpa_pid,
+    parentId,
+    name: {
+      en: comp.name,
+      zh: comp.name_orig || comp.name,
+    },
+    area: comp.area_km2 > 0 ? comp.area_km2 : undefined,
+    designation: comp.designation,
+    // Note: latitude/longitude not available from CSV
+    // Would need shapefile processing to add coordinates
+  }))
 }
 
 /**
@@ -213,6 +288,35 @@ async function processAllLanguages(): Promise<ProcessedSite[]> {
 }
 
 /**
+ * Merge WDPA components into sites
+ */
+function mergeComponents(
+  sites: ProcessedSite[],
+  wdpaComponents: Record<string, WDPAComponent[]>
+): void {
+  console.log('\n🔄 Merging WDPA components...')
+
+  let sitesWithComponents = 0
+  let totalComponentsAdded = 0
+
+  for (const site of sites) {
+    const components = wdpaComponents[site.idNumber]
+
+    if (components && components.length > 0) {
+      site.hasComponents = true
+      site.componentCount = components.length
+      site.components = convertToComponentSites(site.id, components)
+
+      sitesWithComponents++
+      totalComponentsAdded += components.length
+    }
+  }
+
+  console.log(`   ✓ Added components to ${sitesWithComponents} sites`)
+  console.log(`   ✓ Total components: ${totalComponentsAdded}`)
+}
+
+/**
  * Validate processed data
  */
 function validateData(sites: ProcessedSite[]): void {
@@ -279,12 +383,18 @@ function generateStats(sites: ProcessedSite[]): void {
   const regionCount: Record<string, number> = {}
   let transboundaryCount = 0
   let dangerCount = 0
+  let sitesWithComponents = 0
+  let totalComponents = 0
 
   sites.forEach((site) => {
     categoryCount[site.category]++
     regionCount[site.region] = (regionCount[site.region] || 0) + 1
     if (site.transboundary) transboundaryCount++
     if (site.danger) dangerCount++
+    if (site.hasComponents) {
+      sitesWithComponents++
+      totalComponents += site.componentCount || 0
+    }
   })
 
   console.log(`   Total Sites: ${sites.length}`)
@@ -294,6 +404,8 @@ function generateStats(sites: ProcessedSite[]): void {
   console.log(`     - Mixed: ${categoryCount.Mixed}`)
   console.log(`   Transboundary: ${transboundaryCount}`)
   console.log(`   In Danger: ${dangerCount}`)
+  console.log(`   With Components: ${sitesWithComponents}`)
+  console.log(`   Total Components: ${totalComponents}`)
   console.log(`   Regions:`)
   Object.entries(regionCount)
     .sort((a, b) => b[1] - a[1])
@@ -306,23 +418,31 @@ function generateStats(sites: ProcessedSite[]): void {
  * Main execution
  */
 async function main() {
-  console.log('🌍 UNESCO World Heritage Data Processing\n')
-  console.log('='.repeat(50))
+  console.log('🌍 UNESCO + WDPA Data Merge Pipeline\n')
+  console.log('='.repeat(70))
 
   try {
-    // Process all languages
+    // Step 1: Process UNESCO XML data
     const sites = await processAllLanguages()
 
-    // Validate data
+    // Step 2: Load WDPA components
+    const wdpaComponents = loadWDPAComponents()
+
+    // Step 3: Merge components (if available)
+    if (Object.keys(wdpaComponents).length > 0) {
+      mergeComponents(sites, wdpaComponents)
+    }
+
+    // Step 4: Validate data
     validateData(sites)
 
-    // Sort by ID for consistency
+    // Step 5: Sort by ID for consistency
     sites.sort((a, b) => parseInt(a.idNumber) - parseInt(b.idNumber))
 
-    // Generate statistics
+    // Step 6: Generate statistics
     generateStats(sites)
 
-    // Write output
+    // Step 7: Write output
     const outputPath = path.join(process.cwd(), 'data', 'sites.json')
     console.log(`\n💾 Writing output to: ${outputPath}`)
 
@@ -331,8 +451,8 @@ async function main() {
     const fileSize = (fs.statSync(outputPath).size / 1024).toFixed(2)
     console.log(`   ✓ File written: ${fileSize} KB`)
 
-    console.log('\n' + '='.repeat(50))
-    console.log('✅ Data processing completed successfully!')
+    console.log('\n' + '='.repeat(70))
+    console.log('✅ Data merge completed successfully!')
   } catch (error) {
     console.error('\n❌ Error:', error)
     process.exit(1)

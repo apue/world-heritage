@@ -6,6 +6,7 @@
  */
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { HeritageSite, SiteFilters } from '@/lib/data/types'
 import { Locale } from '@/lib/i18n/config'
 import { getCountryName, searchCountries } from '@/lib/data/countries'
@@ -77,6 +78,9 @@ export default function ExploreSidebar({
       yearRange: 'Year Range',
       totalSites: 'Total Sites',
       countries: 'countries',
+      gamesTitle: 'Mini Games',
+      geoChallenge: 'Geo Challenge',
+      geoChallengeDesc: 'Test your geography knowledge',
       africaRegion: 'Africa',
       arabRegion: 'Arab States',
       asiaRegion: 'Asia & Pacific',
@@ -111,6 +115,9 @@ export default function ExploreSidebar({
       yearRange: '年份范围',
       totalSites: '总遗产地数',
       countries: '个国家',
+      gamesTitle: '迷你游戏',
+      geoChallenge: '地理挑战',
+      geoChallengeDesc: '测试你的地理知识',
       africaRegion: '非洲',
       arabRegion: '阿拉伯国家',
       asiaRegion: '亚洲及太平洋',
@@ -261,6 +268,34 @@ export default function ExploreSidebar({
           {t.showing} <span className="font-semibold text-blue-600">{results.length}</span> {t.of}{' '}
           {totalCount} {t.sites}
         </p>
+      </div>
+
+      {/* Mini Games Section */}
+      <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-pink-50">
+        <h3 className="text-sm font-semibold text-gray-900 mb-2">🎮 {t.gamesTitle}</h3>
+        <Link
+          href={`/${locale}/games/geo-challenge`}
+          className="block w-full bg-white hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 text-gray-900 hover:text-white border-2 border-purple-200 hover:border-transparent font-semibold py-3 px-4 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md group"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <div className="text-sm font-bold group-hover:text-white transition-colors">
+                🌍 {t.geoChallenge}
+              </div>
+              <div className="text-xs text-gray-600 group-hover:text-purple-100 transition-colors mt-1">
+                {t.geoChallengeDesc}
+              </div>
+            </div>
+            <svg
+              className="w-5 h-5 text-purple-400 group-hover:text-white transition-colors"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </Link>
       </div>
 
       {/* Statistics Section */}
