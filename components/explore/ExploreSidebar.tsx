@@ -8,6 +8,7 @@
 import { useState, useMemo } from 'react'
 import { HeritageSite, SiteFilters } from '@/lib/data/types'
 import { Locale } from '@/lib/i18n/config'
+import { getCountryName, searchCountries } from '@/lib/data/countries'
 
 interface ExploreSidebarProps {
   searchQuery: string
@@ -127,13 +128,27 @@ export default function ExploreSidebar({
     { value: 'Latin America and the Caribbean', label: t.latinRegion },
   ]
 
-  // Filter countries by search
+  // Filter and sort countries by name
   const filteredCountries = useMemo(() => {
-    if (!countrySearch) return availableCountries
-    return availableCountries.filter((c) =>
-      c.code.toLowerCase().includes(countrySearch.toLowerCase())
-    )
-  }, [availableCountries, countrySearch])
+    // Get all country codes with sites
+    const countriesWithSites = new Set(availableCountries.map((c) => c.code))
+
+    // Search countries by name
+    const searchResults = searchCountries(countrySearch, locale)
+
+    // Filter to only countries that have heritage sites
+    const validCountries = searchResults.filter((code) => countriesWithSites.has(code))
+
+    // Return with site counts
+    return validCountries.map((code) => {
+      const countryData = availableCountries.find((c) => c.code === code)
+      return {
+        code,
+        name: getCountryName(code, locale),
+        count: countryData?.count || 0,
+      }
+    })
+  }, [availableCountries, countrySearch, locale])
 
   const hasActiveFilters =
     (filters.categories && filters.categories.length > 0) ||
@@ -368,26 +383,33 @@ export default function ExploreSidebar({
                 className="w-full px-3 py-1.5 mb-2 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
               <div className="max-h-40 overflow-y-auto space-y-1 border border-gray-200 rounded p-2 bg-white">
-                {filteredCountries.slice(0, 20).map((country) => (
+                {filteredCountries.slice(0, 30).map((country) => (
                   <label
                     key={country.code}
-                    className="flex items-center justify-between cursor-pointer py-1"
+                    className="flex items-center justify-between cursor-pointer py-1 hover:bg-gray-50 px-1 rounded"
                   >
-                    <div className="flex items-center">
+                    <div className="flex items-center flex-1 min-w-0">
                       <input
                         type="checkbox"
                         checked={filters.countries?.includes(country.code) || false}
                         onChange={() => handleCountryToggle(country.code)}
-                        className="mr-2 w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        className="mr-2 w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
                       />
-                      <span className="text-xs text-gray-700 uppercase">{country.code}</span>
+                      <span className="text-xs text-gray-700 truncate">{country.name}</span>
                     </div>
-                    <span className="text-xs text-gray-500">({country.count})</span>
+                    <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
+                      ({country.count})
+                    </span>
                   </label>
                 ))}
-                {filteredCountries.length > 20 && (
-                  <p className="text-xs text-gray-500 italic pt-2">
-                    Showing first 20 of {filteredCountries.length}
+                {filteredCountries.length > 30 && (
+                  <p className="text-xs text-gray-500 italic pt-2 text-center">
+                    Showing first 30 of {filteredCountries.length}
+                  </p>
+                )}
+                {filteredCountries.length === 0 && countrySearch && (
+                  <p className="text-xs text-gray-500 italic py-2 text-center">
+                    No countries found
                   </p>
                 )}
               </div>
