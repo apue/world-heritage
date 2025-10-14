@@ -216,53 +216,58 @@ export default function GeoChallengeGame() {
 
           {/* Map */}
           <div className="flex-1 relative">
-            <GeoGameMap
-              currentRound={currentRound}
-              onGuess={handleGuess}
-              showAnswer={showFeedback}
-              locale={locale}
-            />
-          </div>
+            <div className="h-full" style={{ zIndex: 1 }}>
+              <GeoGameMap
+                currentRound={currentRound}
+                onGuess={handleGuess}
+                showAnswer={showFeedback}
+                locale={locale}
+              />
+            </div>
 
-          {/* Feedback Panel */}
-          {showFeedback && currentRound.answered && (
-            <div className="absolute bottom-0 left-0 right-0 bg-white border-t-4 border-blue-600 shadow-2xl">
-              <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 md:py-8">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="flex-1 text-center md:text-left">
-                    <div className="text-3xl md:text-4xl font-bold mb-2">
-                      {getDistanceFeedback(currentRound.distance!, locale)}
+            {/* Feedback Panel */}
+            {showFeedback && currentRound.answered && (
+              <div
+                className="absolute bottom-0 left-0 right-0 bg-white border-t-4 border-blue-600 shadow-2xl"
+                style={{ zIndex: 2 }}
+              >
+                <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 md:py-8">
+                  <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div className="flex-1 text-center md:text-left">
+                      <div className="text-3xl md:text-4xl font-bold mb-2">
+                        {getDistanceFeedback(currentRound.distance!, locale)}
+                      </div>
+                      <div className="text-xl md:text-2xl text-gray-600 mb-1">
+                        {locale === 'zh' ? '距离：' : 'Distance: '}
+                        <span className="font-bold text-gray-900">
+                          {formatDistance(currentRound.distance!)}
+                        </span>
+                      </div>
+                      <div className="text-lg md:text-xl text-blue-600">
+                        {locale === 'zh' ? '得分：' : 'Score: '}
+                        <span className="font-bold">
+                          +{currentRound.score} {locale === 'zh' ? '分' : 'pts'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-xl md:text-2xl text-gray-600 mb-1">
-                      {locale === 'zh' ? '距离：' : 'Distance: '}
-                      <span className="font-bold text-gray-900">
-                        {formatDistance(currentRound.distance!)}
-                      </span>
-                    </div>
-                    <div className="text-lg md:text-xl text-blue-600">
-                      {locale === 'zh' ? '得分：' : 'Score: '}
-                      <span className="font-bold">
-                        +{currentRound.score} {locale === 'zh' ? '分' : 'pts'}
-                      </span>
-                    </div>
+
+                    <button
+                      onClick={nextRound}
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold py-3 px-8 rounded-xl transition-colors shadow-lg hover:shadow-xl"
+                    >
+                      {gameState.currentRound + 1 >= gameState.totalRounds
+                        ? locale === 'zh'
+                          ? '查看结果'
+                          : 'See Results'
+                        : locale === 'zh'
+                          ? '下一题'
+                          : 'Next Round'}
+                    </button>
                   </div>
-
-                  <button
-                    onClick={nextRound}
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold py-3 px-8 rounded-xl transition-colors shadow-lg hover:shadow-xl"
-                  >
-                    {gameState.currentRound + 1 >= gameState.totalRounds
-                      ? locale === 'zh'
-                        ? '查看结果'
-                        : 'See Results'
-                      : locale === 'zh'
-                        ? '下一题'
-                        : 'Next Round'}
-                  </button>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
