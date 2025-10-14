@@ -34,6 +34,16 @@
 - [x] Refactor home page to `app/[locale]/page.tsx`
 - [x] Refactor layout to `app/[locale]/layout.tsx`
 - [x] Basic language switcher in home page
+- [x] **Explore Page with Interactive Map**
+  - [x] Create data types with components field (future-ready)
+  - [x] Implement data access layer (`lib/data/sites.ts`)
+  - [x] Implement search and filter functions
+  - [x] Install Leaflet + marker clustering
+  - [x] Create HeritageMap component
+  - [x] Create ExploreSidebar component
+  - [x] Build Google Maps-style explore page
+  - [x] Add category and status filters
+  - [x] Multi-language search support
 
 ### 🔄 In Progress
 
@@ -41,13 +51,7 @@ _Nothing currently in progress_
 
 ### 📝 Pending
 
-#### Data Processing
-
-- [ ] Download Chinese XML data (`data/whc-zh.xml`)
-- [ ] Run data processing script to generate `data/sites.json`
-- [ ] Verify merged data quality
-
-#### UI Translations
+#### UI Translations (Optional Enhancement)
 
 - [ ] Create translation files structure
   - [ ] `locales/en/common.json`
@@ -59,41 +63,36 @@ _Nothing currently in progress_
 
 ## 📋 Phase 2: Map Integration
 
-### 📝 Pending
+### ✅ Completed
 
-#### Leaflet Adapter Implementation
+- [x] Integrate Leaflet with OpenStreetMap
+- [x] Implement marker clustering for performance
+- [x] Add Leaflet CSS imports
+- [x] Fix SSR issues with Leaflet (dynamic import)
+- [x] Create HeritageMap component with full interactivity
 
-- [ ] Implement Leaflet adapter (`lib/maps/adapters/leaflet.ts`)
-  - [ ] Basic map initialization
-  - [ ] Marker management
-  - [ ] Event handling
-  - [ ] Style switching (default, dark, terrain)
+### 📝 Pending (Future Enhancement)
 
-#### Map Components
-
-- [ ] Create MapProvider component (`lib/maps/MapProvider.tsx`)
-- [ ] Create MapFactory (`lib/maps/MapFactory.ts`)
-- [ ] Create map hooks (`lib/maps/hooks/useMap.ts`)
-
-#### Map Integration
-
-- [ ] Test map with sample data
-- [ ] Add Leaflet CSS imports
-- [ ] Fix any SSR issues with Leaflet
+- [ ] Map style switching (default, dark, terrain)
+- [ ] Advanced marker customization by category
+- [ ] Heatmap visualization option
+- [ ] User location detection
 
 ---
 
 ## 📋 Phase 3: Heritage Sites Browsing
 
+### ✅ Completed
+
+- [x] Create data access functions (`lib/data/sites.ts`)
+  - [x] `getAllSites()`
+  - [x] `getSiteById(id)`
+  - [x] `filterSites(filters)`
+  - [x] `searchSites(query, locale)`
+  - [x] `searchAndFilter(query, filters, locale)`
+- [x] Create interactive explore page (`app/[locale]/explore`)
+
 ### 📝 Pending
-
-#### Data Layer
-
-- [ ] Create data access functions (`lib/data/sites.ts`)
-  - [ ] `getAllSites(locale)`
-  - [ ] `getSiteById(id, locale)`
-  - [ ] `filterSites(criteria)`
-  - [ ] `searchSites(query, locale)`
 
 #### List View
 
@@ -116,13 +115,13 @@ _Nothing currently in progress_
 
 #### Map View
 
-- [ ] Create map view page (`app/[locale]/heritage/map/page.tsx`)
-  - [ ] Full-screen interactive map
-  - [ ] Display all 1,248 sites as markers
-  - [ ] Marker clustering for performance
-  - [ ] Click marker to show popup
-  - [ ] Filter sites on map
-  - [ ] Jump to detail page from map
+- [x] ~~Create map view page~~ → **Replaced by `/explore` page** ✅
+  - [x] Full-screen interactive map
+  - [x] Display all 1,247 sites as markers
+  - [x] Marker clustering for performance
+  - [x] Click marker to show popup
+  - [x] Filter sites on map
+  - [ ] Jump to detail page from map (pending detail page)
 
 ---
 
@@ -252,35 +251,37 @@ _Nothing currently in progress_
 
 **Immediate tasks to focus on**:
 
-1. **Download Chinese XML Data** (HIGHEST PRIORITY)
-   - File: `data/whc-zh.xml`
-   - Goal: Get Chinese translations for all sites
-   - Estimated time: 15 minutes
-
-2. **Run Data Processing** (HIGHEST PRIORITY)
-   - Command: `npm run prepare-data`
-   - Goal: Generate merged `data/sites.json` with both languages
-   - Estimated time: 5 minutes
-
-3. **Test with Heritage Detail Page** (HIGH PRIORITY)
+1. **Heritage Detail Page** (HIGHEST PRIORITY)
    - File: `app/[locale]/heritage/[id]/page.tsx`
-   - Goal: Verify i18n works with real data
+   - Goal: Create individual site page with full information
+   - Features: Hero image, site info, small map, related sites
+   - Estimated time: 2-3 hours
+
+2. **Heritage List Page** (HIGH PRIORITY)
+   - File: `app/[locale]/heritage/page.tsx`
+   - Goal: Grid/list view of all sites with filtering
+   - Features: Card layout, pagination, filters
+   - Estimated time: 2-3 hours
+
+3. **Advanced Filters on Explore Page** (MEDIUM PRIORITY)
+   - Add country multi-select filter
+   - Add year range slider
    - Estimated time: 1-2 hours
 
-Once these are done, we can proceed with either:
+Once these are done, we can proceed with:
 
-- Map integration (for visual appeal)
-- OR Heritage browsing pages (for content)
-- OR Games (for engagement)
+- Games implementation (for engagement)
+- OR User features with Supabase (for personalization)
+- OR Performance optimization and deployment
 
 ---
 
 ## 📊 Progress Tracking
 
-- **Overall Progress**: ~25% complete
-- **Phase 1 (Foundation)**: 80% complete ⬆️
-- **Phase 2 (Maps)**: 0% complete
-- **Phase 3 (Heritage)**: 0% complete
+- **Overall Progress**: ~40% complete ⬆️
+- **Phase 1 (Foundation)**: 100% complete ✅
+- **Phase 2 (Maps)**: 90% complete ⬆️ (core done, enhancements pending)
+- **Phase 3 (Heritage)**: 40% complete ⬆️ (explore page done, detail/list pending)
 - **Phase 4 (Games)**: 0% complete
 - **Phase 5 (Supabase)**: 0% complete
 - **Phase 6 (Polish)**: 0% complete
