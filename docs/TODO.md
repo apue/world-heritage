@@ -141,37 +141,48 @@ _Nothing currently in progress_
 
 Transform `/explore` into the home page - a comprehensive hub for all WH exploration needs
 
-### 📝 Pending
+### ✅ Completed
 
 #### Hub Infrastructure & Routing
 
-- [ ] Move `/explore` to `/` (home page)
-  - [ ] Update routing structure
-  - [ ] Redirect old home to new home
-  - [ ] Update navigation links
-  - [ ] Update metadata and SEO
+- [x] Move `/explore` to `/` (home page)
+  - [x] Update routing structure
+  - [x] Redirect old home to new home
+  - [x] Update navigation links
+  - [x] Update metadata and SEO
 
 #### Enhanced Filtering & Search
 
-- [ ] Advanced filters for travel planning
-  - [ ] Country multi-select filter (with search/autocomplete)
-  - [ ] Year range slider (inscription year)
-  - [ ] Region/continent filter
-  - [ ] Danger status toggle (highlight endangered sites)
-- [ ] Improve search UX
-  - [ ] Search suggestions/autocomplete
-  - [ ] Recent searches
-  - [ ] Popular searches hints
+- [x] Advanced filters for travel planning
+  - [x] Country multi-select filter (with search/autocomplete)
+    - [x] Full country names instead of 2-letter codes
+    - [x] Alphabetical sorting by country name
+    - [x] 167 countries mapped with English + Chinese names
+    - [x] Search by country name
+  - [x] Year range slider (inscription year)
+  - [x] Region/continent filter
+  - [x] Danger status toggle (highlight endangered sites)
 
 #### UI/UX Enhancements
 
-- [ ] Optimize layout for "hub" experience
-  - [ ] Better sidebar information density
-  - [ ] Quick stats display (total sites, countries, etc.)
-  - [ ] Featured/highlighted sites section
-- [ ] Mobile responsiveness improvements
-- [ ] Loading states and skeleton screens
-- [ ] Empty states with helpful prompts
+- [x] Optimize layout for "hub" experience
+  - [x] Better sidebar information density
+  - [x] Quick stats display (total sites, countries, etc.)
+  - [x] Expandable statistics section with category breakdown
+- [x] Mobile responsiveness improvements
+  - [x] Mobile menu button with overlay sidebar
+  - [x] Auto-close sidebar on mobile when selecting site
+  - [x] Touch-friendly interactions
+- [x] Loading states and skeleton screens
+- [x] Empty states with helpful prompts
+
+### 📝 Pending (Future Enhancements)
+
+#### Search UX Improvements
+
+- [ ] Search suggestions/autocomplete
+- [ ] Recent searches
+- [ ] Popular searches hints
 
 #### Localized UI Strings
 
@@ -187,6 +198,12 @@ Transform `/explore` into the home page - a comprehensive hub for all WH explora
 - [ ] First-time visitor guide/tutorial
 - [ ] Tooltips for key features
 - [ ] "Sign up to unlock more" prompts (non-intrusive)
+
+#### Advanced Features
+
+- [ ] Featured/highlighted sites section on home
+- [ ] Country flag icons in country selector
+- [ ] Advanced search filters (UNESCO criteria, danger period, etc.)
 
 ---
 
@@ -440,34 +457,43 @@ Allow users to export their data to external tools for better personal knowledge
 
 ## 🎯 Current Priority (Next Steps)
 
-**New Product Direction**: Transform Explore into an all-in-one hub (Home Page)
+**Status**: Phase 4 (Central Hub) completed! 🎉
 
-### Immediate Focus: Phase 4 - The Central Hub Experience
+### ✅ Recently Completed: Phase 4 - The Central Hub Experience
 
-**Sprint 1: Foundation (Estimated: 3-4 hours)** ⭐ **START HERE**
+**Sprint 1: Foundation** - ✅ COMPLETED (2025-10-14)
 
-1. **Move Explore to Home** (HIGHEST PRIORITY)
-   - Restructure routing: `/explore` → `/` (home page)
-   - Update all navigation links
-   - Redirect old home if needed
-   - Update metadata/SEO
-   - Estimated time: 30 mins
+1. ✅ **Move Explore to Home**
+   - Restructured routing: `/explore` → `/` (home page)
+   - Updated all navigation links
+   - Added redirect for backward compatibility
+   - Enhanced metadata/SEO with Open Graph tags
 
-2. **Enhanced Filtering** (HIGH PRIORITY)
-   - Country multi-select filter with search
-   - Year range slider
-   - Region/continent filter
+2. ✅ **Enhanced Filtering**
+   - Country multi-select with full names (not codes!)
+   - Alphabetical sorting by country name
+   - Year range slider (1978-2024)
+   - Region/continent filter (5 UNESCO regions)
    - Danger status toggle
-   - Estimated time: 2-3 hours
 
-3. **UI/UX Polish** (MEDIUM PRIORITY)
-   - Optimize sidebar layout for "hub" feel
-   - Add quick stats (total sites, countries, etc.)
-   - Loading states and skeleton screens
-   - Mobile responsiveness check
-   - Estimated time: 1-2 hours
+3. ✅ **UI/UX Polish**
+   - Optimized sidebar layout for "hub" experience
+   - Quick stats display (1,247 sites, 167 countries)
+   - Expandable statistics section
+   - Loading states with spinner
+   - Mobile responsiveness with overlay sidebar
+   - Empty states with helpful prompts
 
-**Sprint 2: Localization & Onboarding (Estimated: 2-3 hours)**
+**Key Achievement**: Country filter improved based on user feedback
+
+- Before: 2-letter codes (CN, US, GB), sorted by site count
+- After: Full names (China, United States, United Kingdom), alphabetically sorted
+
+---
+
+### 🎯 Next Focus: Choose Your Path
+
+**Sprint 2: Localization & Onboarding (Optional, Estimated: 2-3 hours)**
 
 4. **Localized UI Strings**
    - Create `locales/en/common.json` & `locales/zh/common.json`
@@ -483,7 +509,7 @@ Allow users to export their data to external tools for better personal knowledge
 
 ---
 
-### Next Phases (After Sprint 1 & 2)
+### 🚀 Recommended Next Phases
 
 **Option A: Phase 5 - Mini Games** (for engagement & fun)
 
@@ -511,12 +537,16 @@ Allow users to export their data to external tools for better personal knowledge
 
 ## 📊 Progress Tracking
 
-- **Overall Progress**: ~35% complete (recalibrated based on new scope)
+- **Overall Progress**: ~50% complete ⬆️ (major milestone reached!)
 - **Phase 1 (Foundation)**: 100% complete ✅
 - **Phase 2 (Maps)**: 100% complete ✅ (core done, Leaflet integrated)
 - **Phase 3 (Heritage Browsing)**: 100% complete ✅ (explore + detail pages done)
-- **Phase 4 (Central Hub)**: 0% complete ⭐ **CURRENT FOCUS**
-- **Phase 5 (Mini Games)**: 0% complete
+- **Phase 4 (Central Hub)**: 100% complete ✅ **JUST COMPLETED!** 🎉
+  - Routing restructured
+  - Advanced filters (country, year, region, status)
+  - Mobile responsive
+  - SEO optimized
+- **Phase 5 (Mini Games)**: 0% complete ⭐ **RECOMMENDED NEXT**
 - **Phase 6 (User Personalization)**: 0% complete
 - **Phase 7 (Data Export)**: 0% complete
 - **Phase 8 (Polish & Deploy)**: 0% complete
