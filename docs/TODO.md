@@ -236,14 +236,14 @@ Add interactive mini-games to the hub for engaging, gamified learning
 
 #### Geo-Location Challenge Game
 
-- [ ] Create geo-challenge page (`app/[locale]/games/geo-challenge/page.tsx`)
-  - [ ] Random site selection (10 sites per round)
-  - [ ] Interactive map for clicking
-  - [ ] Distance calculation (Haversine formula)
-  - [ ] Score calculation based on distance
-  - [ ] Round-by-round feedback with fun facts
-  - [ ] Final results page with stats
-  - [ ] "Play Again" and "Share Score" functionality
+- [x] Create geo-challenge page (`app/[locale]/games/geo-challenge/page.tsx`)
+  - [x] Random site selection (10 sites per round)
+  - [x] Interactive map for clicking
+  - [x] Distance calculation (Haversine formula)
+  - [x] Score calculation based on distance
+  - [x] Round-by-round feedback with fun facts _(todo: enrich with fact data source)_
+  - [x] Final results page with stats
+  - [ ] "Play Again" and "Share Score" functionality _(share outstanding)_
 
 #### Image Matching Game
 
