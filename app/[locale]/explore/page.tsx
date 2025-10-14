@@ -70,6 +70,7 @@ export default function ExplorePage() {
       <div className="flex-1 relative">
         <HeritageMap
           sites={filteredSites}
+          locale={locale}
           selectedSite={selectedSite}
           onMarkerClick={setSelectedSite}
         />
