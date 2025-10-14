@@ -17,6 +17,7 @@ export default function UserMenu() {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -50,8 +51,33 @@ export default function UserMenu() {
     }
   }, [supabase])
 
+  const handleSignOut = async () => {
+    try {
+      setIsSigningOut(true)
+      setIsMenuOpen(false)
+      console.log('[UserMenu] Signing out...')
+
+      const { error } = await supabase.auth.signOut()
+
+      if (error) {
+        console.error('[UserMenu] Sign out error:', error.message)
+        alert(`Sign out failed: ${error.message}`)
+        setIsSigningOut(false)
+        return
+      }
+
+      console.log('[UserMenu] Sign out successful')
+      // The auth state change listener will automatically update the UI
+      // No need to manually setUser(null) as onAuthStateChange will handle it
+    } catch (err) {
+      console.error('[UserMenu] Unexpected error during sign out:', err)
+      alert('An unexpected error occurred')
+      setIsSigningOut(false)
+    }
+  }
+
   // Loading state
-  if (isLoading) {
+  if (isLoading || isSigningOut) {
     return <div className="h-10 w-10 animate-pulse rounded-full bg-gray-200"></div>
   }
 
@@ -129,13 +155,9 @@ export default function UserMenu() {
                 </div>
               </Link>
 
-              <Link
-                href="/auth/signout"
-                className="block px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                onClick={() => {
-                  console.log('[UserMenu] Sign out clicked')
-                  setIsMenuOpen(false)
-                }}
+              <button
+                onClick={handleSignOut}
+                className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
               >
                 <div className="flex items-center gap-2">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,7 +170,7 @@ export default function UserMenu() {
                   </svg>
                   <span>Sign Out</span>
                 </div>
-              </Link>
+              </button>
             </div>
           </div>
         </>
