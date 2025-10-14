@@ -93,3 +93,6 @@ env/
 # uv
 .uv/
 uv.lock
+
+#data
+data/raw/
