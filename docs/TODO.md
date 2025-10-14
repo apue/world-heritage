@@ -1,6 +1,6 @@
 # World Heritage Explorer - TODO List
 
-**Last Updated**: 2025-01-13
+**Last Updated**: 2025-10-14
 **Current Phase**: Phase 1 - Foundation & Multi-language Setup
 
 ---
@@ -105,13 +105,13 @@ _Nothing currently in progress_
 
 #### Detail View
 
-- [ ] Create heritage detail page (`app/[locale]/heritage/[id]/page.tsx`)
-  - [ ] Hero image section
-  - [ ] Site information display
-  - [ ] Small location map
-  - [ ] Related sites recommendations
-  - [ ] Share functionality
-  - [ ] Generate all 1,248 static pages
+- [x] Create heritage detail page (`app/[locale]/heritage/[id]/page.tsx`)
+  - [x] Hero image section
+  - [x] Site information display
+  - [x] Small location map
+  - [x] Related sites recommendations
+  - [x] Share functionality
+  - [x] Generate all 1,248 static pages
 
 #### Map View
 
@@ -121,7 +121,7 @@ _Nothing currently in progress_
   - [x] Marker clustering for performance
   - [x] Click marker to show popup
   - [x] Filter sites on map
-  - [ ] Jump to detail page from map (pending detail page)
+  - [x] Jump to detail page from map
 
 ---
 
@@ -251,21 +251,20 @@ _Nothing currently in progress_
 
 **Immediate tasks to focus on**:
 
-1. **Heritage Detail Page** (HIGHEST PRIORITY)
-   - File: `app/[locale]/heritage/[id]/page.tsx`
-   - Goal: Create individual site page with full information
-   - Features: Hero image, site info, small map, related sites
-   - Estimated time: 2-3 hours
-
-2. **Heritage List Page** (HIGH PRIORITY)
+1. **Heritage List Page** (HIGHEST PRIORITY)
    - File: `app/[locale]/heritage/page.tsx`
    - Goal: Grid/list view of all sites with filtering
    - Features: Card layout, pagination, filters
    - Estimated time: 2-3 hours
 
-3. **Advanced Filters on Explore Page** (MEDIUM PRIORITY)
+2. **Advanced Filters on Explore Page** (HIGH PRIORITY)
    - Add country multi-select filter
    - Add year range slider
+   - Estimated time: 1-2 hours
+
+3. **Localized UI Strings Structure** (MEDIUM PRIORITY)
+   - Create `locales/en/common.json` & `locales/zh/common.json`
+   - Migrate hardcoded copy into translation files
    - Estimated time: 1-2 hours
 
 Once these are done, we can proceed with:
@@ -278,10 +277,10 @@ Once these are done, we can proceed with:
 
 ## 📊 Progress Tracking
 
-- **Overall Progress**: ~40% complete ⬆️
+- **Overall Progress**: ~45% complete ⬆️
 - **Phase 1 (Foundation)**: 100% complete ✅
 - **Phase 2 (Maps)**: 90% complete ⬆️ (core done, enhancements pending)
-- **Phase 3 (Heritage)**: 40% complete ⬆️ (explore page done, detail/list pending)
+- **Phase 3 (Heritage)**: 60% complete ⬆️ (explore + detail done, list pending)
 - **Phase 4 (Games)**: 0% complete
 - **Phase 5 (Supabase)**: 0% complete
 - **Phase 6 (Polish)**: 0% complete

@@ -12,6 +12,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import 'leaflet.markercluster'
 import { HeritageSite } from '@/lib/data/types'
+import { Locale } from '@/lib/i18n/config'
 
 // Fix for default marker icons in Leaflet
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -24,13 +25,24 @@ L.Icon.Default.mergeOptions({
 
 interface HeritageMapProps {
   sites: HeritageSite[]
+  locale: Locale
   selectedSite?: HeritageSite | null
   onMarkerClick?: (site: HeritageSite) => void
   className?: string
 }
 
+const popupCopy = {
+  en: {
+    viewDetails: 'View details',
+  },
+  zh: {
+    viewDetails: '查看详情',
+  },
+} satisfies Record<Locale, { viewDetails: string }>
+
 export default function HeritageMap({
   sites,
+  locale,
   selectedSite,
   onMarkerClick,
   className = '',
@@ -87,18 +99,29 @@ export default function HeritageMap({
 
     // Add markers for each site
     sites.forEach((site) => {
+      const translation = site.translations[locale] ?? site.translations.en
+      const copy = popupCopy[locale]
       const marker = L.marker([site.latitude, site.longitude])
 
       // Create popup content
       const popupContent = `
         <div class="p-2">
-          <h3 class="font-bold text-sm mb-1">${site.translations.en.name}</h3>
-          <p class="text-xs text-gray-600">${site.translations.en.states}</p>
+          <h3 class="font-bold text-sm mb-1">${translation.name}</h3>
+          <p class="text-xs text-gray-600">${translation.states}</p>
           <p class="text-xs mt-1">
             <span class="inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
               ${site.category}
             </span>
           </p>
+          <a
+            href="/${locale}/heritage/${site.id}"
+            class="mt-2 inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700"
+          >
+            ${copy.viewDetails}
+            <svg class="ml-1 h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6l6 6-6 6" />
+            </svg>
+          </a>
         </div>
       `
 
@@ -126,7 +149,7 @@ export default function HeritageMap({
         mapRef.current.fitBounds(bounds, { padding: [50, 50] })
       }
     }
-  }, [sites, onMarkerClick])
+  }, [sites, onMarkerClick, locale])
 
   // Handle selected site
   useEffect(() => {
