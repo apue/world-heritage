@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { HeritageSite, SiteFilters } from '@/lib/data/types'
 import { Locale } from '@/lib/i18n/config'
 import { getCountryName, searchCountries } from '@/lib/data/countries'
+import UserMenu from '@/components/auth/UserMenu'
 
 interface ExploreSidebarProps {
   searchQuery: string
@@ -224,9 +225,17 @@ export default function ExploreSidebar({
     <div className="w-full md:w-[400px] h-full bg-white shadow-lg flex flex-col border-r border-gray-200 overflow-hidden">
       {/* Header with Logo & Stats */}
       <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
-        <h1 className="text-xl font-bold text-gray-900">{t.title}</h1>
-        <p className="text-xs text-gray-600 mt-1">{t.subtitle}</p>
-        <div className="flex items-center gap-4 mt-3 text-sm">
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-bold text-gray-900">{t.title}</h1>
+            <p className="text-xs text-gray-600 mt-1">{t.subtitle}</p>
+          </div>
+          {/* User Menu in Header */}
+          <div className="flex-shrink-0">
+            <UserMenu />
+          </div>
+        </div>
+        <div className="flex items-center gap-4 text-sm">
           <div className="flex items-center gap-1">
             <span className="text-2xl font-bold text-blue-600">{totalCount}</span>
             <span className="text-gray-600 text-xs">{t.sites}</span>

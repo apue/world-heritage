@@ -270,13 +270,27 @@ Add interactive mini-games to the hub for engaging, gamified learning
 
 Enable users to track, review, and manage their personal WH journey
 
-### 📝 Pending
+### ✅ Completed
 
 #### Supabase Setup
 
-- [ ] Create Supabase project
-- [ ] Set up environment variables
-- [ ] Install Supabase client libraries (`@supabase/supabase-js`, `@supabase/auth-helpers-nextjs`)
+- [x] Create Supabase project
+- [x] Set up environment variables
+- [x] Install Supabase client libraries (`@supabase/supabase-js`, `@supabase/ssr`)
+
+#### Authentication Flow
+
+- [x] Implement Supabase Auth
+  - [x] Social auth provider (Google OAuth)
+  - [x] Auth state management (client/server/middleware)
+  - [x] LoginButton component with Google branding
+  - [x] UserMenu component with dropdown
+  - [x] Sign out functionality with immediate UI update
+  - [x] Integrate auth UI into ExploreSidebar header
+  - [x] OAuth callback handling with comprehensive logging
+  - [x] Token refresh in middleware
+
+### 📝 Pending
 
 #### Database Schema Design
 
@@ -293,19 +307,16 @@ Enable users to track, review, and manage their personal WH journey
 - [ ] Set up Row Level Security (RLS) policies
 - [ ] Create database indexes for performance
 
-#### Authentication Flow
+#### User Profile & Settings
 
-- [ ] Implement Supabase Auth
-  - [ ] Sign up form with email validation
-  - [ ] Sign in form
-  - [ ] Password reset flow
-  - [ ] Social auth providers (Google, GitHub)
-  - [ ] Auth state management (context/hooks)
 - [ ] User profile page (`app/[locale]/profile/page.tsx`)
   - [ ] Display user info
   - [ ] Edit profile
   - [ ] Account settings
-  - [ ] Sign out functionality
+- [ ] Additional auth features (future)
+  - [ ] Email/password sign up
+  - [ ] Password reset flow
+  - [ ] GitHub OAuth provider
 
 #### Visited Sites Feature
 
@@ -457,9 +468,34 @@ Allow users to export their data to external tools for better personal knowledge
 
 ## 🎯 Current Priority (Next Steps)
 
-**Status**: Phase 4 (Central Hub) completed! 🎉
+**Status**: Phase 6 (Authentication) in progress! 🔐
 
-### ✅ Recently Completed: Phase 4 - The Central Hub Experience
+### ✅ Recently Completed: Google OAuth Authentication (2025-10-14)
+
+**Phase 6 - Sprint 1: Supabase Setup & Google OAuth** - ✅ COMPLETED
+
+1. ✅ **Supabase Infrastructure**
+   - Installed `@supabase/supabase-js` (v2.48.1) and `@supabase/ssr` (v0.5.2)
+   - Created client utilities for client/server/middleware environments
+   - Configured environment variables for Vercel deployment
+
+2. ✅ **Google OAuth Login**
+   - LoginButton component with Google branding
+   - OAuth callback route with comprehensive logging
+   - Token refresh in middleware on every request
+   - Redirect URL configuration with wildcard support
+
+3. ✅ **User Menu & Profile**
+   - UserMenu component with user avatar and dropdown
+   - Real-time auth state synchronization
+   - Client-side sign out with immediate UI update
+   - Integrated into ExploreSidebar header
+
+**Key Achievement**: Users can now sign in with Google and maintain session across page refreshes!
+
+---
+
+### ✅ Previously Completed: Phase 4 - The Central Hub Experience
 
 **Sprint 1: Foundation** - ✅ COMPLETED (2025-10-14)
 
@@ -537,17 +573,20 @@ Allow users to export their data to external tools for better personal knowledge
 
 ## 📊 Progress Tracking
 
-- **Overall Progress**: ~50% complete ⬆️ (major milestone reached!)
+- **Overall Progress**: ~55% complete ⬆️ (authentication milestone reached!)
 - **Phase 1 (Foundation)**: 100% complete ✅
 - **Phase 2 (Maps)**: 100% complete ✅ (core done, Leaflet integrated)
 - **Phase 3 (Heritage Browsing)**: 100% complete ✅ (explore + detail pages done)
-- **Phase 4 (Central Hub)**: 100% complete ✅ **JUST COMPLETED!** 🎉
+- **Phase 4 (Central Hub)**: 100% complete ✅
   - Routing restructured
   - Advanced filters (country, year, region, status)
   - Mobile responsive
   - SEO optimized
-- **Phase 5 (Mini Games)**: 0% complete ⭐ **RECOMMENDED NEXT**
-- **Phase 6 (User Personalization)**: 0% complete
+- **Phase 5 (Mini Games)**: 20% complete (geo-challenge done, image matching pending)
+- **Phase 6 (User Personalization)**: 25% complete 🔐 **IN PROGRESS**
+  - ✅ Supabase setup
+  - ✅ Google OAuth authentication
+  - ⏳ Database schema & user features pending
 - **Phase 7 (Data Export)**: 0% complete
 - **Phase 8 (Polish & Deploy)**: 0% complete
 
@@ -645,7 +684,8 @@ _No issues yet - project just started!_
 - **Framework**: Next.js 15 + TypeScript
 - **Styling**: Tailwind CSS
 - **Map**: Leaflet + React Leaflet + Marker Clustering
-- **Backend (Future)**: Supabase (auth + database)
+- **Backend**: Supabase (auth + database) ✅
+- **Authentication**: Google OAuth via Supabase Auth ✅
 - **Deployment**: Vercel
 
 ---

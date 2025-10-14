@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
         hostname: 'whc.unesco.org',
         pathname: '/uploads/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        pathname: '/**',
+      },
     ],
   },
   turbopack: {

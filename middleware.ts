@@ -1,17 +1,31 @@
 /**
- * Next.js Middleware for i18n
- * Handles locale detection and routing
+ * Next.js Middleware for i18n and Supabase Auth
+ * Handles:
+ * 1. Supabase auth token refresh (must run first)
+ * 2. Locale detection and routing
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { i18nConfig, defaultLocale, isValidLocale } from '@/lib/i18n/config'
+import { updateSession } from '@/lib/supabase/middleware'
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
-  // Skip middleware for Next.js internal routes and static files
+  console.log('[Middleware] Processing request:', pathname)
+
+  // IMPORTANT: Handle Supabase auth first (before any returns)
+  // This refreshes the user's session on every request
+  const supabaseResponse = await updateSession(request)
+
+  // Skip i18n logic for Next.js internal routes and static files
   if (pathname.startsWith('/_next') || pathname.startsWith('/api') || pathname.includes('.')) {
-    return NextResponse.next()
+    return supabaseResponse
+  }
+
+  // Skip i18n logic for auth routes (they handle their own redirects)
+  if (pathname.startsWith('/auth')) {
+    return supabaseResponse
   }
 
   // Check if pathname already has a locale
@@ -20,16 +34,26 @@ export function middleware(request: NextRequest) {
   )
 
   if (pathnameHasLocale) {
-    return NextResponse.next()
+    // Return the Supabase response (with updated cookies)
+    return supabaseResponse
   }
 
   // Get user's preferred locale
   const locale = getLocale(request)
 
-  // Redirect to localized URL
+  // Redirect to localized URL, preserving Supabase cookies
   const newUrl = new URL(`/${locale}${pathname}`, request.url)
   newUrl.search = request.nextUrl.search // Preserve query params
-  return NextResponse.redirect(newUrl)
+
+  // Create redirect response and copy Supabase cookies
+  const redirectResponse = NextResponse.redirect(newUrl)
+
+  // Copy cookies from supabaseResponse to redirectResponse
+  supabaseResponse.cookies.getAll().forEach((cookie) => {
+    redirectResponse.cookies.set(cookie.name, cookie.value, cookie)
+  })
+
+  return redirectResponse
 }
 
 /**
