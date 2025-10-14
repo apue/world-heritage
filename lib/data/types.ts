@@ -77,6 +77,9 @@ export interface SiteFilters {
   // Country filter (multi-select, ISO codes)
   countries?: string[]
 
+  // Region filter (multi-select)
+  regions?: string[]
+
   // Category filter (multi-select)
   categories?: Array<'Cultural' | 'Natural' | 'Mixed'>
 

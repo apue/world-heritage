@@ -6,9 +6,45 @@ import { languages, type Locale, isRTL } from '@/lib/i18n/config'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'World Heritage Explorer | UNESCO Heritage Sites',
-  description: 'Explore and discover UNESCO World Heritage Sites around the world',
-  keywords: ['UNESCO', 'World Heritage', 'Travel', 'Culture', 'History'],
+  title: 'World Heritage Explorer | Discover 1,247 UNESCO Sites Worldwide',
+  description:
+    'Your all-in-one hub for exploring UNESCO World Heritage Sites. Search, filter, and plan visits to 1,247+ cultural, natural, and mixed heritage sites across the globe. Interactive map, travel planning tools, and educational games.',
+  keywords: [
+    'UNESCO',
+    'World Heritage Sites',
+    'Travel Planning',
+    'Cultural Heritage',
+    'Natural Heritage',
+    'Heritage Tourism',
+    'Interactive Map',
+    'World Heritage List',
+    'UNESCO Sites',
+    'Heritage Explorer',
+  ],
+  authors: [{ name: 'World Heritage Explorer' }],
+  openGraph: {
+    title: 'World Heritage Explorer | Discover UNESCO Sites',
+    description: 'Explore 1,247+ UNESCO World Heritage Sites with interactive map and filters',
+    type: 'website',
+    locale: 'en_US',
+    siteName: 'World Heritage Explorer',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'World Heritage Explorer',
+    description: 'Discover and explore UNESCO World Heritage Sites worldwide',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  alternates: {
+    canonical: 'https://world-heritage.vercel.app',
+    languages: {
+      en: 'https://world-heritage.vercel.app/en',
+      zh: 'https://world-heritage.vercel.app/zh',
+    },
+  },
 }
 
 // Generate static params for all locales
