@@ -33,6 +33,7 @@ export default function GeoChallengeGame() {
   })
 
   const [showFeedback, setShowFeedback] = useState(false)
+  const MAP_LAYER = { base: 200, overlay: 1200 } as const
 
   // Initialize game
   const startGame = () => {
@@ -216,7 +217,7 @@ export default function GeoChallengeGame() {
 
           {/* Map */}
           <div className="flex-1 relative">
-            <div className="h-full" style={{ zIndex: 1 }}>
+            <div className="h-full relative" style={{ zIndex: MAP_LAYER.base }}>
               <GeoGameMap
                 currentRound={currentRound}
                 onGuess={handleGuess}
@@ -229,7 +230,7 @@ export default function GeoChallengeGame() {
             {showFeedback && currentRound.answered && (
               <div
                 className="absolute bottom-0 left-0 right-0 bg-white border-t-4 border-blue-600 shadow-2xl"
-                style={{ zIndex: 2 }}
+                style={{ zIndex: MAP_LAYER.overlay }}
               >
                 <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 md:py-8">
                   <div className="flex flex-col md:flex-row items-center justify-between gap-6">
