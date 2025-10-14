@@ -3,9 +3,9 @@
  * Provides functions to load, search, and filter site data
  */
 
-import sitesData from '@/data/sites.json'
 import { Locale } from '@/lib/i18n/config'
 import { HeritageSite, SiteFilters, SearchResult } from './types'
+import sitesData from '@/public/sites.json'
 
 // Cast imported JSON data to proper type
 const sites = sitesData as HeritageSite[]
