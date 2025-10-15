@@ -58,3 +58,42 @@ export interface GameConfig {
   perfectGuessThreshold: number // km
   goodGuessThreshold: number // km
 }
+
+/**
+ * Temperature hint for Hot & Cold game
+ */
+export type TemperatureHint = 'correct' | 'hot' | 'warm' | 'cool' | 'cold'
+
+/**
+ * A single guess attempt in Hot & Cold game
+ */
+export interface HotColdGuess {
+  lat: number
+  lng: number
+  distance: number
+  hint: TemperatureHint
+  attemptNumber: number
+}
+
+/**
+ * A single round in the Hot & Cold game
+ */
+export interface HotColdRound {
+  roundNumber: number
+  site: HeritageSite
+  guesses: HotColdGuess[]
+  maxAttempts: number
+  solved: boolean
+  score: number | null // Score for this round based on attempts used
+}
+
+/**
+ * Complete game state for Hot & Cold game
+ */
+export interface HotColdGameState {
+  status: GameStatus
+  currentRound: number
+  totalRounds: number
+  rounds: HotColdRound[]
+  totalScore: number
+}
