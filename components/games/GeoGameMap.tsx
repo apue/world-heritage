@@ -86,7 +86,7 @@ export default function GeoGameMap({ currentRound, onGuess, showAnswer, locale }
     <MapContainer
       center={[20, 0]}
       zoom={2}
-      className="w-full h-full cursor-crosshair"
+      className="w-full h-full leaflet-crosshair"
       zoomControl={true}
       scrollWheelZoom={true}
     >
