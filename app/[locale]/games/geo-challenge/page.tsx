@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
+import Image from 'next/image'
 import { getAllSites } from '@/lib/data/sites'
 import {
   selectRandomSites,
@@ -199,19 +200,34 @@ export default function GeoChallengeGame() {
           {/* Site Info Panel */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-6 md:px-6">
             <div className="max-w-7xl mx-auto">
-              <h3 className="text-2xl md:text-3xl font-bold mb-2">
-                {currentRound.site.translations[locale].name}
-              </h3>
-              <p className="text-blue-100 text-sm md:text-base max-w-3xl line-clamp-2">
-                {currentRound.site.translations[locale].description}
-              </p>
-              {!showFeedback && (
-                <p className="mt-4 text-blue-100 text-sm md:text-base">
-                  {locale === 'zh'
-                    ? '👆 点击地图标记这个遗产地的位置'
-                    : '👆 Click on the map to mark the location of this site'}
-                </p>
-              )}
+              <div className="flex flex-col md:flex-row gap-6 items-center">
+                {/* Site Image */}
+                {currentRound.site.imageUrl && (
+                  <div className="w-full md:w-48 h-48 flex-shrink-0 rounded-lg overflow-hidden shadow-lg relative">
+                    <Image
+                      src={currentRound.site.imageUrl}
+                      alt={currentRound.site.translations[locale].name}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 192px"
+                    />
+                  </div>
+                )}
+
+                {/* Site Info */}
+                <div className="flex-1 text-center md:text-left">
+                  <h3 className="text-2xl md:text-3xl font-bold mb-4">
+                    {currentRound.site.translations[locale].name}
+                  </h3>
+                  {!showFeedback && (
+                    <p className="text-blue-100 text-sm md:text-base">
+                      {locale === 'zh'
+                        ? '👆 点击地图标记这个遗产地的位置'
+                        : '👆 Click on the map to mark the location of this site'}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
