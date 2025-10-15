@@ -198,7 +198,7 @@ async function processAllLanguages(): Promise<ProcessedSite[]> {
       // Add translation for current language
       const site = sitesMap.get(id)!
       site.translations[lang] = {
-        name: row.site[0] || '',
+        name: cleanHtml(row.site[0] || ''),
         description: cleanHtml(row.short_description[0] || ''),
         states: row.states[0] || '',
         location: row.location[0] || '',
