@@ -6,8 +6,8 @@
  * Supports custom colored markers based on user site status
  */
 
-import { useEffect, useRef } from 'react'
-import { createRoot, Root } from 'react-dom/client'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
@@ -15,7 +15,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import 'leaflet.markercluster'
 import { HeritageSite } from '@/lib/data/types'
 import { Locale } from '@/lib/i18n/config'
-import { useUserSites, UserSitesContext } from '@/lib/contexts/UserSitesContext'
+import { useUserSites } from '@/lib/contexts/UserSitesContext'
 import { SITE_STATUS_COLORS, getPrimaryStatus } from '@/lib/design/site-status-colors'
 import type { SiteStatusType } from '@/lib/design/site-status-colors'
 import SiteActionButtons from '@/components/heritage/SiteActionButtons'
@@ -144,15 +144,9 @@ export default function HeritageMap({
   const markersRef = useRef<L.MarkerClusterGroup | null>(null)
   const markerInstancesRef = useRef<Map<string, L.Marker>>(new Map())
   const containerRef = useRef<HTMLDivElement>(null)
-  const reactRootsRef = useRef<Map<string, Root>>(new Map())
+  const [popupTargets, setPopupTargets] = useState<Record<string, HTMLElement>>({})
 
-  const userSites = useUserSites()
-  const { getSiteStatus, sitesStatus } = userSites
-  const userSitesRef = useRef(userSites)
-
-  useEffect(() => {
-    userSitesRef.current = userSites
-  }, [userSites])
+  const { getSiteStatus, sitesStatus } = useUserSites()
 
   // Initialize map
   useEffect(() => {
@@ -183,18 +177,6 @@ export default function HeritageMap({
     }
   }, [])
 
-  // Cleanup React roots when component unmounts
-  useEffect(() => {
-    const roots = reactRootsRef.current
-
-    return () => {
-      roots.forEach((root) => {
-        root.unmount()
-      })
-      roots.clear()
-    }
-  }, [])
-
   // Update markers when sites or user status changes
   useEffect(() => {
     if (!mapRef.current) return
@@ -204,12 +186,7 @@ export default function HeritageMap({
       mapRef.current.removeLayer(markersRef.current)
     }
     markerInstancesRef.current.clear()
-
-    // Cleanup old React roots
-    reactRootsRef.current.forEach((root) => {
-      root.unmount()
-    })
-    reactRootsRef.current.clear()
+    setPopupTargets({})
 
     // Create marker cluster group
     const markers = L.markerClusterGroup({
@@ -242,25 +219,23 @@ export default function HeritageMap({
         // Use setTimeout to ensure DOM is fully rendered
         setTimeout(() => {
           const container = document.getElementById(`popup-actions-${site.id}`)
-          if (container && !reactRootsRef.current.has(site.id)) {
-            const root = createRoot(container)
-            root.render(
-              <UserSitesContext.Provider value={userSitesRef.current}>
-                <SiteActionButtons siteId={site.id} variant="popup" locale={locale} />
-              </UserSitesContext.Provider>
-            )
-            reactRootsRef.current.set(site.id, root)
-          }
+          if (!container) return
+
+          setPopupTargets((prev) => {
+            if (prev[site.id] === container) return prev
+            return { ...prev, [site.id]: container }
+          })
         }, 0)
       })
 
-      // Cleanup React root when popup closes
+      // Remove portal when popup closes
       marker.on('popupclose', () => {
-        const root = reactRootsRef.current.get(site.id)
-        if (root) {
-          root.unmount()
-          reactRootsRef.current.delete(site.id)
-        }
+        setPopupTargets((prev) => {
+          if (!prev[site.id]) return prev
+          const updated = { ...prev }
+          delete updated[site.id]
+          return updated
+        })
       })
 
       // Handle marker click
@@ -302,5 +277,18 @@ export default function HeritageMap({
     }
   }, [selectedSite])
 
-  return <div ref={containerRef} className={`w-full h-full ${className}`} />
+  const portals = Object.entries(popupTargets).map(([siteId, container]) =>
+    createPortal(
+      <SiteActionButtons siteId={siteId} variant="popup" locale={locale} />,
+      container,
+      siteId
+    )
+  )
+
+  return (
+    <>
+      <div ref={containerRef} className={`w-full h-full ${className}`} />
+      {portals}
+    </>
+  )
 }
