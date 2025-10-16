@@ -3,6 +3,7 @@
 /**
  * Interactive map component for displaying World Heritage Sites
  * Uses Leaflet with marker clustering for performance
+ * Supports custom colored markers based on user site status
  */
 
 import { useEffect, useRef } from 'react'
@@ -13,15 +14,9 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import 'leaflet.markercluster'
 import { HeritageSite } from '@/lib/data/types'
 import { Locale } from '@/lib/i18n/config'
-
-// Fix for default marker icons in Leaflet
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-delete (L.Icon.Default.prototype as any)._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-})
+import { useUserSites } from '@/lib/contexts/UserSitesContext'
+import { SITE_STATUS_COLORS, getPrimaryStatus } from '@/lib/design/site-status-colors'
+import type { SiteStatusType } from '@/lib/design/site-status-colors'
 
 interface HeritageMapProps {
   sites: HeritageSite[]
@@ -34,11 +29,116 @@ interface HeritageMapProps {
 const popupCopy = {
   en: {
     viewDetails: 'View details',
+    visited: 'Visited',
+    wishlist: 'Wishlist',
+    bookmark: 'Bookmark',
   },
   zh: {
     viewDetails: '查看详情',
+    visited: '已访问',
+    wishlist: '想去',
+    bookmark: '收藏',
   },
-} satisfies Record<Locale, { viewDetails: string }>
+} satisfies Record<Locale, Record<string, string>>
+
+/**
+ * Create custom marker icon based on site status
+ */
+function createCustomMarkerIcon(statusType: SiteStatusType): L.DivIcon {
+  const colors = SITE_STATUS_COLORS[statusType]
+
+  return L.divIcon({
+    html: `
+      <div style="
+        position: relative;
+        width: 32px;
+        height: 32px;
+      ">
+        <div style="
+          position: absolute;
+          width: 28px;
+          height: 28px;
+          background-color: ${colors.primary};
+          border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg);
+          border: 3px solid white;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        "></div>
+        <div style="
+          position: absolute;
+          width: 28px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-size: 14px;
+          font-weight: bold;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        ">${colors.icon}</div>
+      </div>
+    `,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
+    className: 'custom-marker-icon',
+  })
+}
+
+/**
+ * Create popup HTML with action buttons
+ */
+function createPopupContent(
+  site: HeritageSite,
+  locale: Locale,
+  statusType: SiteStatusType
+): string {
+  const translation = site.translations[locale] ?? site.translations.en
+  const copy = popupCopy[locale]
+  const colors = SITE_STATUS_COLORS[statusType]
+
+  return `
+    <div class="p-3" style="min-width: 250px;">
+      <!-- Hero Image -->
+      <div class="relative mb-2 h-32 w-full overflow-hidden rounded">
+        <img
+          src="${site.imageUrl}"
+          alt="${translation.name}"
+          class="h-full w-full object-cover"
+          loading="lazy"
+        />
+      </div>
+
+      <!-- Site Info -->
+      <h3 class="mb-1 text-sm font-bold">${translation.name}</h3>
+      <p class="mb-2 text-xs text-gray-600">${translation.states}</p>
+
+      <!-- Status Badge -->
+      <div class="mb-2 flex items-center gap-2">
+        <span class="inline-block rounded px-2 py-0.5 text-xs" style="
+          background-color: ${colors.light};
+          color: ${colors.dark};
+        ">
+          ${colors.icon} ${colors.label}
+        </span>
+        <span class="inline-block rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
+          ${site.category}
+        </span>
+      </div>
+
+      <!-- View Details Link -->
+      <a
+        href="/${locale}/heritage/${site.id}"
+        class="mt-2 inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700"
+      >
+        ${copy.viewDetails}
+        <svg class="ml-1 h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6l6 6-6 6" />
+        </svg>
+      </a>
+    </div>
+  `
+}
 
 export default function HeritageMap({
   sites,
@@ -49,7 +149,10 @@ export default function HeritageMap({
 }: HeritageMapProps) {
   const mapRef = useRef<L.Map | null>(null)
   const markersRef = useRef<L.MarkerClusterGroup | null>(null)
+  const markerInstancesRef = useRef<Map<string, L.Marker>>(new Map())
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const { getSiteStatus, sitesStatus } = useUserSites()
 
   // Initialize map
   useEffect(() => {
@@ -80,7 +183,7 @@ export default function HeritageMap({
     }
   }, [])
 
-  // Update markers when sites change
+  // Update markers when sites or user status changes
   useEffect(() => {
     if (!mapRef.current) return
 
@@ -88,6 +191,7 @@ export default function HeritageMap({
     if (markersRef.current) {
       mapRef.current.removeLayer(markersRef.current)
     }
+    markerInstancesRef.current.clear()
 
     // Create marker cluster group
     const markers = L.markerClusterGroup({
@@ -99,34 +203,18 @@ export default function HeritageMap({
 
     // Add markers for each site
     sites.forEach((site) => {
-      const translation = site.translations[locale] ?? site.translations.en
-      const copy = popupCopy[locale]
-      const marker = L.marker([site.latitude, site.longitude])
+      const siteStatus = getSiteStatus(site.id)
+      const statusType = getPrimaryStatus(siteStatus)
+      const customIcon = createCustomMarkerIcon(statusType)
+
+      const marker = L.marker([site.latitude, site.longitude], { icon: customIcon })
 
       // Create popup content
-      const popupContent = `
-        <div class="p-2">
-          <h3 class="font-bold text-sm mb-1">${translation.name}</h3>
-          <p class="text-xs text-gray-600">${translation.states}</p>
-          <p class="text-xs mt-1">
-            <span class="inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
-              ${site.category}
-            </span>
-          </p>
-          <a
-            href="/${locale}/heritage/${site.id}"
-            class="mt-2 inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700"
-          >
-            ${copy.viewDetails}
-            <svg class="ml-1 h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6l6 6-6 6" />
-            </svg>
-          </a>
-        </div>
-      `
+      const popupContent = createPopupContent(site, locale, statusType)
 
       marker.bindPopup(popupContent, {
         maxWidth: 300,
+        className: 'custom-popup',
       })
 
       // Handle marker click
@@ -137,6 +225,7 @@ export default function HeritageMap({
       }
 
       markers.addLayer(marker)
+      markerInstancesRef.current.set(site.id, marker)
     })
 
     mapRef.current.addLayer(markers)
@@ -149,7 +238,7 @@ export default function HeritageMap({
         mapRef.current.fitBounds(bounds, { padding: [50, 50] })
       }
     }
-  }, [sites, onMarkerClick, locale])
+  }, [sites, locale, onMarkerClick, getSiteStatus, sitesStatus])
 
   // Handle selected site
   useEffect(() => {
@@ -159,6 +248,12 @@ export default function HeritageMap({
     mapRef.current.setView([selectedSite.latitude, selectedSite.longitude], 10, {
       animate: true,
     })
+
+    // Open popup for selected site
+    const marker = markerInstancesRef.current.get(selectedSite.id)
+    if (marker) {
+      marker.openPopup()
+    }
   }, [selectedSite])
 
   return <div ref={containerRef} className={`w-full h-full ${className}`} />

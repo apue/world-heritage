@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { languages, type Locale, isRTL } from '@/lib/i18n/config'
+import { UserSitesProvider } from '@/lib/contexts/UserSitesContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -64,7 +65,9 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} dir={isRTL(locale) ? 'rtl' : 'ltr'}>
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <UserSitesProvider>{children}</UserSitesProvider>
+      </body>
     </html>
   )
 }

@@ -12,6 +12,7 @@ import type { User } from '@supabase/supabase-js'
 import Image from 'next/image'
 import Link from 'next/link'
 import LoginButton from './LoginButton'
+import { useUserSites } from '@/lib/contexts/UserSitesContext'
 
 export default function UserMenu() {
   const [user, setUser] = useState<User | null>(null)
@@ -19,6 +20,7 @@ export default function UserMenu() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const supabase = createClient()
+  const { stats } = useUserSites()
 
   useEffect(() => {
     // Get initial user
@@ -133,6 +135,22 @@ export default function UserMenu() {
                 {user.user_metadata?.full_name || 'User'}
               </p>
               <p className="text-xs text-gray-500">{user.email}</p>
+
+              {/* Statistics */}
+              <div className="mt-3 flex gap-3 text-xs text-gray-600">
+                <span className="flex items-center gap-1">
+                  <span className="font-semibold text-green-600">✓</span>
+                  <span>{stats.visited}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="font-semibold text-amber-600">♡</span>
+                  <span>{stats.wishlist}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="font-semibold text-red-600">★</span>
+                  <span>{stats.bookmark}</span>
+                </span>
+              </div>
             </div>
 
             {/* Menu items */}

@@ -106,3 +106,62 @@ export interface SearchResult {
   total: number
   filtered: number
 }
+
+/**
+ * User site status (visited, wishlist, bookmark)
+ */
+export interface UserSiteStatus {
+  visited: boolean
+  wishlist: boolean
+  bookmark: boolean
+}
+
+/**
+ * User visit detail
+ */
+export interface UserVisitDetail {
+  id: string
+  userId: string
+  siteId: string
+  visitDate: string // ISO date string
+  notes?: string
+  rating?: number // 1-5 stars
+  photos?: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * User wishlist item detail
+ */
+export interface UserWishlistDetail {
+  id: string
+  userId: string
+  siteId: string
+  priority: 'high' | 'medium' | 'low'
+  notes?: string
+  plannedDate?: string
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * User bookmark detail
+ */
+export interface UserBookmarkDetail {
+  id: string
+  userId: string
+  siteId: string
+  notes?: string
+  tags?: string[]
+  createdAt: string
+}
+
+/**
+ * User statistics
+ */
+export interface UserStats {
+  visited: number
+  wishlist: number
+  bookmark: number
+}

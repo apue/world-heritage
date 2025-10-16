@@ -8,6 +8,7 @@ import { languages, defaultLocale, type Locale } from '@/lib/i18n/config'
 import type { LocalizedPageProps } from '@/lib/i18n/types'
 import ShareActions from '@/components/heritage/ShareActions'
 import SiteMiniMap from '@/components/map/SiteMiniMap'
+import SiteActionButtons from '@/components/heritage/SiteActionButtons'
 
 const localeCopy = {
   en: {
@@ -128,6 +129,11 @@ export default async function HeritageDetailPage({ params }: LocalizedPageProps<
               {translation.name}
             </h1>
             <p className="max-w-3xl text-sm text-white/80 sm:text-base">{translation.states}</p>
+
+            {/* Action buttons */}
+            <div className="mt-2">
+              <SiteActionButtons siteId={site.id} variant="detail" locale={locale} />
+            </div>
           </div>
         </div>
       </section>
