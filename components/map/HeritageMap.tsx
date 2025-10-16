@@ -145,6 +145,7 @@ export default function HeritageMap({
   const markerInstancesRef = useRef<Map<string, L.Marker>>(new Map())
   const containerRef = useRef<HTMLDivElement>(null)
   const [popupTargets, setPopupTargets] = useState<Record<string, HTMLElement>>({})
+  const hasFittedRef = useRef<boolean>(false)
 
   const { getSiteStatus, sitesStatus } = useUserSites()
 
@@ -177,7 +178,7 @@ export default function HeritageMap({
     }
   }, [])
 
-  // Update markers when sites or user status changes
+  // Rebuild markers when sites or locale change (NOT on status change)
   useEffect(() => {
     if (!mapRef.current) return
 
@@ -198,6 +199,7 @@ export default function HeritageMap({
 
     // Add markers for each site
     sites.forEach((site) => {
+      // Initial icon uses current status snapshot; later updates handled by a separate effect
       const siteStatus = getSiteStatus(site.id)
       const statusType = getPrimaryStatus(siteStatus)
       const customIcon = createCustomMarkerIcon(statusType)
@@ -256,10 +258,22 @@ export default function HeritageMap({
     if (sites.length > 0) {
       const bounds = markers.getBounds()
       if (bounds.isValid()) {
+        // Only fit on rebuild; do not run on status updates (this effect doesn't run on status)
         mapRef.current.fitBounds(bounds, { padding: [50, 50] })
+        hasFittedRef.current = true
       }
     }
-  }, [sites, locale, onMarkerClick, getSiteStatus, sitesStatus])
+  }, [sites, locale, onMarkerClick])
+
+  // Update marker icons when user status changes (no rebuild, keep popups open)
+  useEffect(() => {
+    if (!mapRef.current) return
+    markerInstancesRef.current.forEach((marker, siteId) => {
+      const status = getSiteStatus(siteId)
+      const statusType = getPrimaryStatus(status)
+      marker.setIcon(createCustomMarkerIcon(statusType))
+    })
+  }, [sitesStatus, getSiteStatus])
 
   // Handle selected site
   useEffect(() => {
