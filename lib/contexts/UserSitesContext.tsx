@@ -33,7 +33,7 @@ interface UserSitesContextValue {
   refresh: () => Promise<void>
 }
 
-const UserSitesContext = createContext<UserSitesContextValue | null>(null)
+export const UserSitesContext = createContext<UserSitesContextValue | null>(null)
 
 export function UserSitesProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)

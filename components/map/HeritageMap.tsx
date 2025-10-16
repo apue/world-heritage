@@ -15,7 +15,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import 'leaflet.markercluster'
 import { HeritageSite } from '@/lib/data/types'
 import { Locale } from '@/lib/i18n/config'
-import { useUserSites } from '@/lib/contexts/UserSitesContext'
+import { useUserSites, UserSitesContext } from '@/lib/contexts/UserSitesContext'
 import { SITE_STATUS_COLORS, getPrimaryStatus } from '@/lib/design/site-status-colors'
 import type { SiteStatusType } from '@/lib/design/site-status-colors'
 import SiteActionButtons from '@/components/heritage/SiteActionButtons'
@@ -146,7 +146,13 @@ export default function HeritageMap({
   const containerRef = useRef<HTMLDivElement>(null)
   const reactRootsRef = useRef<Map<string, Root>>(new Map())
 
-  const { getSiteStatus, sitesStatus } = useUserSites()
+  const userSites = useUserSites()
+  const { getSiteStatus, sitesStatus } = userSites
+  const userSitesRef = useRef(userSites)
+
+  useEffect(() => {
+    userSitesRef.current = userSites
+  }, [userSites])
 
   // Initialize map
   useEffect(() => {
@@ -179,11 +185,13 @@ export default function HeritageMap({
 
   // Cleanup React roots when component unmounts
   useEffect(() => {
+    const roots = reactRootsRef.current
+
     return () => {
-      reactRootsRef.current.forEach((root) => {
+      roots.forEach((root) => {
         root.unmount()
       })
-      reactRootsRef.current.clear()
+      roots.clear()
     }
   }, [])
 
@@ -236,7 +244,11 @@ export default function HeritageMap({
           const container = document.getElementById(`popup-actions-${site.id}`)
           if (container && !reactRootsRef.current.has(site.id)) {
             const root = createRoot(container)
-            root.render(<SiteActionButtons siteId={site.id} variant="popup" locale={locale} />)
+            root.render(
+              <UserSitesContext.Provider value={userSitesRef.current}>
+                <SiteActionButtons siteId={site.id} variant="popup" locale={locale} />
+              </UserSitesContext.Provider>
+            )
             reactRootsRef.current.set(site.id, root)
           }
         }, 0)
