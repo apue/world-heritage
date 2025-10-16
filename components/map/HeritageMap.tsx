@@ -211,13 +211,27 @@ export default function HeritageMap({
       const cluster = evt?.layer
       if (!cluster || typeof cluster.getChildCount !== 'function') return
       const count = cluster.getChildCount()
-      if (count > 1 && typeof cluster.spiderfy === 'function') {
-        cluster.spiderfy()
-      } else if (count === 1 && typeof cluster.getAllChildMarkers === 'function') {
+      if (count === 1 && typeof cluster.getAllChildMarkers === 'function') {
         const children = cluster.getAllChildMarkers()
         const marker = children?.[0]
         if (marker && typeof marker.openPopup === 'function') {
           marker.openPopup()
+        }
+      } else if (count > 1 && count < 5 && typeof cluster.spiderfy === 'function') {
+        // 少量子标记时使用蜘蛛化展开（不改变缩放）
+        cluster.spiderfy()
+      } else if (count >= 5) {
+        // 子标记较多时使用 fitBounds 到聚合范围
+        const bounds = typeof cluster.getBounds === 'function'
+          ? cluster.getBounds()
+          : new L.LatLngBounds(
+              (typeof cluster.getAllChildMarkers === 'function'
+                ? cluster.getAllChildMarkers()
+                : []
+              ).map((m: L.Marker) => m.getLatLng())
+            )
+        if (bounds && bounds.isValid && bounds.isValid() && mapRef.current) {
+          mapRef.current.fitBounds(bounds, { padding: [50, 50] })
         }
       }
       const oe = evt?.originalEvent
