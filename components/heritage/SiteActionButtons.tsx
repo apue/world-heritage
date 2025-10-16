@@ -16,6 +16,7 @@ import {
   getActiveStatusStyles,
 } from '@/lib/design/site-status-colors'
 import type { Locale } from '@/lib/i18n/config'
+import { signInWithGoogle } from '@/lib/supabase/auth'
 
 interface SiteActionButtonsProps {
   siteId: string
@@ -80,17 +81,23 @@ export default function SiteActionButtons({
     )
   }
 
-  // Don't show buttons if user is not logged in
-  if (!user) {
-    return null
-  }
-
   const status = getSiteStatus(siteId)
 
   const handleToggle = async (
     type: 'visited' | 'wishlist' | 'bookmark',
     toggleFn: (id: string) => Promise<boolean>
   ) => {
+    // If not authenticated, initiate sign-in instead of toggling
+    if (!user) {
+      try {
+        await signInWithGoogle()
+      } catch (err) {
+        console.error('[SiteActionButtons] Sign-in failed', err)
+        alert('Sign in failed. Please try again.')
+      }
+      return
+    }
+
     setProcessing(type)
 
     const success = await toggleFn(siteId)

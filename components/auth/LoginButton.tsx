@@ -5,36 +5,17 @@
  * Displays a Google OAuth sign-in button
  */
 
-import { createClient } from '@/lib/supabase/client'
 import { useState } from 'react'
+import { signInWithGoogle } from '@/lib/supabase/auth'
 
 export default function LoginButton() {
   const [isLoading, setIsLoading] = useState(false)
-  const supabase = createClient()
 
   const handleSignIn = async () => {
     try {
       setIsLoading(true)
       console.log('[LoginButton] Initiating Google OAuth sign in')
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      })
-
-      if (error) {
-        console.error('[LoginButton] Error:', error.message)
-        alert(`Sign in failed: ${error.message}`)
-        setIsLoading(false)
-        return
-      }
-
-      if (data?.url) {
-        console.log('[LoginButton] Redirecting to Google OAuth...')
-        // The browser will redirect to Google OAuth page
-      }
+      await signInWithGoogle()
     } catch (err) {
       console.error('[LoginButton] Unexpected error:', err)
       alert('An unexpected error occurred')
