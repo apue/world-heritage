@@ -20,12 +20,22 @@ export interface SiteTranslation {
  * For serial/transboundary properties with multiple component parts
  */
 export interface ComponentSite {
-  componentId: string
-  parentId: string
-  name: Record<Locale, string>
+  componentId: string // Wikidata QID (e.g., "Q29583927")
+  wikidataUri: string // Full Wikidata URI
+  parentId: string // UNESCO whs_id
+
+  // Geographic information (required)
   latitude: number
   longitude: number
+  country?: string // ISO country code (optional)
+
+  // Multi-language names
+  name: Record<Locale, string>
   description?: Record<Locale, string>
+
+  // Metadata (optional, from WDPA)
+  area?: number
+  designation?: string
 }
 
 /**
@@ -112,6 +122,7 @@ export interface SearchResult {
  */
 export interface UserSiteStatus {
   visited: boolean
+  visitProgress?: PropertyVisitProgress // For sites with components
   wishlist: boolean
   bookmark: boolean
 }
@@ -164,4 +175,33 @@ export interface UserStats {
   visited: number
   wishlist: number
   bookmark: number
+}
+
+/**
+ * User component visit record
+ * Stores visits at component level for serial properties
+ */
+export interface UserComponentVisit {
+  id: string
+  userId: string
+  componentId: string // Wikidata QID
+  siteId: string // UNESCO whs_id (redundant for query optimization)
+  visitDate: string // ISO date string
+  notes?: string
+  photos?: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * Property visit progress
+ * Aggregated from component-level visits
+ */
+export interface PropertyVisitProgress {
+  siteId: string
+  totalComponents: number
+  visitedComponents: number
+  progress: number // 0-1 (e.g., 0.33 for 1/3)
+  isVisited: boolean // true if any component visited (fixed "Any" logic)
+  visitedComponentIds: string[]
 }
