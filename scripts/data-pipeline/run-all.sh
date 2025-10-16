@@ -5,7 +5,8 @@
 # This script runs the complete data processing pipeline:
 # 1. Extract components from WDPA CSV (Python)
 # 2. Merge with UNESCO XML data (TypeScript)
-# 3. Output final sites.json
+# 3. Enrich with Wikidata component coordinates (TypeScript)
+# 4. Output final sites.json
 #
 # Usage:
 #   bash scripts/data-pipeline/run-all.sh
@@ -87,7 +88,7 @@ fi
 # Step 2: Merge UNESCO + WDPA data (TypeScript)
 echo ""
 echo "========================================================================"
-echo -e "${BLUE}🔄 Step 2/2: Merging UNESCO and WDPA data...${NC}"
+echo -e "${BLUE}🔄 Step 2/3: Merging UNESCO and WDPA data...${NC}"
 echo "========================================================================"
 echo ""
 
@@ -105,6 +106,36 @@ fi
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Data merge failed${NC}"
     exit 1
+fi
+
+# Step 3: Enrich with Wikidata components (TypeScript)
+echo ""
+echo "========================================================================"
+echo -e "${BLUE}🌐 Step 3/3: Enriching with Wikidata components...${NC}"
+echo "========================================================================"
+echo ""
+
+# Check if Wikidata file exists
+if [ ! -f "data/raw/multi-sites-data.json" ]; then
+    echo -e "${YELLOW}⚠️  Missing: data/raw/multi-sites-data.json${NC}"
+    echo "   Wikidata components not found, skipping enrichment"
+    echo "   Site data will not include component-level coordinates"
+else
+    # Run Wikidata enrichment
+    if command -v tsx &> /dev/null; then
+        tsx scripts/data-pipeline/3_enrich_wikidata.ts
+    elif [ -f "node_modules/.bin/tsx" ]; then
+        npx tsx scripts/data-pipeline/3_enrich_wikidata.ts
+    else
+        echo -e "${RED}❌ tsx not found${NC}"
+        echo "   Please run: npm install"
+        exit 1
+    fi
+
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Wikidata enrichment failed${NC}"
+        exit 1
+    fi
 fi
 
 # Success!
