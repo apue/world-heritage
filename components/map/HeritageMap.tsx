@@ -202,6 +202,29 @@ export default function HeritageMap({
       zoomToBoundsOnClick: false,
     })
 
+    // Custom cluster click behavior:
+    // - If cluster has >1 markers: spiderfy (no zoom change)
+    // - If cluster has exactly 1 marker: open its popup (no zoom change)
+    markers.on('clusterclick', (e: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const evt = e as any
+      const cluster = evt?.layer
+      if (!cluster || typeof cluster.getChildCount !== 'function') return
+      const count = cluster.getChildCount()
+      if (count > 1 && typeof cluster.spiderfy === 'function') {
+        cluster.spiderfy()
+      } else if (count === 1 && typeof cluster.getAllChildMarkers === 'function') {
+        const children = cluster.getAllChildMarkers()
+        const marker = children?.[0]
+        if (marker && typeof marker.openPopup === 'function') {
+          marker.openPopup()
+        }
+      }
+      const oe = evt?.originalEvent
+      oe?.preventDefault?.()
+      oe?.stopPropagation?.()
+    })
+
     // Add markers for each site
     sites.forEach((site) => {
       // Initial icon uses current status snapshot; later updates handled by a separate effect
