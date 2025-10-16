@@ -143,12 +143,58 @@ export default function HeritageMap({
   const mapRef = useRef<L.Map | null>(null)
   const markersRef = useRef<L.MarkerClusterGroup | null>(null)
   const markerInstancesRef = useRef<Map<string, L.Marker>>(new Map())
+  const markerToSiteIdRef = useRef<Map<L.Marker, string>>(new Map())
   const markerPrimaryStatusRef = useRef<Map<string, SiteStatusType>>(new Map())
   const containerRef = useRef<HTMLDivElement>(null)
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
   const [openSiteId, setOpenSiteId] = useState<string | null>(null)
   const hasFittedRef = useRef<boolean>(false)
   const openSiteIdRef = useRef<string | null>(null)
+  const selectionByMarkerRef = useRef<boolean>(false)
+
+  // Lightweight FIFO queue for icon updates
+  type UpdateTask = { siteId: string }
+  const taskQueueRef = useRef<UpdateTask[]>([])
+  const processingRef = useRef<boolean>(false)
+  // Site update states: Idle | PopupOpen | PendingUpdate
+  const siteUpdateStateRef = useRef<Map<string, 'Idle' | 'PopupOpen' | 'PendingUpdate'>>(new Map())
+
+  function enqueueUpdate(siteId: string) {
+    taskQueueRef.current.push({ siteId })
+    processQueue()
+  }
+
+  function processQueue() {
+    if (processingRef.current) return
+    processingRef.current = true
+    while (taskQueueRef.current.length > 0) {
+      const task = taskQueueRef.current.shift()!
+      const marker = markerInstancesRef.current.get(task.siteId)
+      if (!marker) continue
+      const status = getSiteStatus(task.siteId)
+      const newType = getPrimaryStatus(status)
+      const oldType = markerPrimaryStatusRef.current.get(task.siteId)
+      if (newType !== oldType) {
+        marker.setIcon(createCustomMarkerIcon(newType))
+        markerPrimaryStatusRef.current.set(task.siteId, newType)
+        if (markersRef.current) {
+          const m = markersRef.current as unknown as { refreshClusters?: (layer?: L.Layer) => void }
+          m.refreshClusters?.(marker)
+        }
+      }
+      siteUpdateStateRef.current.set(task.siteId, 'Idle')
+    }
+    processingRef.current = false
+  }
+
+  function scheduleUpdateForSite(siteId: string) {
+    const state = siteUpdateStateRef.current.get(siteId) || 'Idle'
+    if (state === 'PopupOpen') {
+      siteUpdateStateRef.current.set(siteId, 'PendingUpdate')
+      return
+    }
+    enqueueUpdate(siteId)
+  }
 
   const { getSiteStatus, sitesStatus } = useUserSites()
 
@@ -239,6 +285,42 @@ export default function HeritageMap({
       oe?.stopPropagation?.()
     })
 
+    // Map-level popup lifecycle listeners (derive siteId from popup source)
+    mapRef.current.on('popupopen', (e: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const evt = e as any
+      const src: L.Marker | undefined = evt?.popup?._source
+      if (!src) return
+      const sid = markerToSiteIdRef.current.get(src)
+      if (!sid) return
+      openSiteIdRef.current = sid
+      setOpenSiteId(sid)
+      setTimeout(() => {
+        const container = document.getElementById(`popup-actions-${sid}`)
+        if (container) setPortalTarget(container)
+        siteUpdateStateRef.current.set(sid, 'PopupOpen')
+      }, 0)
+    })
+
+    mapRef.current.on('popupclose', (e: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const evt = e as any
+      const src: L.Marker | undefined = evt?.popup?._source
+      if (!src) return
+      const sid = markerToSiteIdRef.current.get(src)
+      if (!sid) return
+      const state = siteUpdateStateRef.current.get(sid)
+      if (state === 'PendingUpdate') {
+        enqueueUpdate(sid)
+      }
+      siteUpdateStateRef.current.set(sid, 'Idle')
+      if (openSiteIdRef.current === sid) {
+        openSiteIdRef.current = null
+        setOpenSiteId(null)
+        setPortalTarget(null)
+      }
+    })
+
     // Add markers for each site
     sites.forEach((site) => {
       // Initial icon uses current status snapshot; later updates handled by a separate effect
@@ -258,43 +340,13 @@ export default function HeritageMap({
         closeButton: true,
       })
 
-      // Render React component when popup opens
-      marker.on('popupopen', () => {
-        openSiteIdRef.current = site.id
-        setOpenSiteId(site.id)
-        // Use setTimeout to ensure DOM is fully rendered
-        setTimeout(() => {
-          const container = document.getElementById(`popup-actions-${site.id}`)
-          if (!container) return
-          setPortalTarget(container)
-        }, 0)
-      })
-
-      // Remove portal when popup closes (only if it's the current one)
-      marker.on('popupclose', () => {
-        if (openSiteIdRef.current === site.id) {
-          // 在关闭时同步更新当前 site 的 marker 图标（A 方案）
-          const status = getSiteStatus(site.id)
-          const newType = getPrimaryStatus(status)
-          const oldType = markerPrimaryStatusRef.current.get(site.id)
-          if (newType !== oldType) {
-            marker.setIcon(createCustomMarkerIcon(newType))
-            markerPrimaryStatusRef.current.set(site.id, newType)
-            if (markersRef.current) {
-              const m = markersRef.current as unknown as { refreshClusters?: (layer?: L.Layer) => void }
-              m.refreshClusters?.(marker)
-            }
-          }
-
-          openSiteIdRef.current = null
-          setOpenSiteId(null)
-          setPortalTarget(null)
-        }
-      })
+      // Track marker ↔ siteId mapping
+      markerToSiteIdRef.current.set(marker, site.id)
 
       // Handle marker click
       if (onMarkerClick) {
         marker.on('click', () => {
+          selectionByMarkerRef.current = true
           onMarkerClick(site)
         })
       }
@@ -302,6 +354,7 @@ export default function HeritageMap({
       markers.addLayer(marker)
       markerInstancesRef.current.set(site.id, marker)
       markerPrimaryStatusRef.current.set(site.id, statusType)
+      siteUpdateStateRef.current.set(site.id, 'Idle')
     })
 
     mapRef.current.addLayer(markers)
@@ -318,40 +371,31 @@ export default function HeritageMap({
     }
   }, [sites, locale, onMarkerClick])
 
-  // Update marker icons when user status changes (no rebuild, keep popups open)
+  // Update marker icons when user status changes (use queue; defer if popup open)
   useEffect(() => {
     if (!mapRef.current) return
-    const changedMarkers: L.Marker[] = []
-    const openId = openSiteIdRef.current
-    markerInstancesRef.current.forEach((marker, siteId) => {
-      // 如果当前 site 正在显示弹窗，则暂不更新图标，改为在 popupclose 时同步
-      if (openId && siteId === openId) return
-
+    markerInstancesRef.current.forEach((_, siteId) => {
       const status = getSiteStatus(siteId)
       const newType = getPrimaryStatus(status)
       const oldType = markerPrimaryStatusRef.current.get(siteId)
       if (newType !== oldType) {
-        marker.setIcon(createCustomMarkerIcon(newType))
-        markerPrimaryStatusRef.current.set(siteId, newType)
-        changedMarkers.push(marker)
+        scheduleUpdateForSite(siteId)
       }
     })
-
-    // 刷新发生变化的 marker 所在的聚合，避免全量重绘
-    if (changedMarkers.length > 0 && markersRef.current) {
-      const m = markersRef.current as unknown as { refreshClusters?: (layer?: L.Layer) => void }
-      changedMarkers.forEach((mk) => m.refreshClusters?.(mk))
-    }
   }, [sitesStatus, getSiteStatus])
 
-  // Handle selected site
+  // Handle selected site (only programmatic selections should change zoom)
   useEffect(() => {
     if (!mapRef.current || !selectedSite) return
-
-    // Center map on selected site
-    mapRef.current.setView([selectedSite.latitude, selectedSite.longitude], 10, {
-      animate: true,
-    })
+    const map = mapRef.current
+    if (selectionByMarkerRef.current) {
+      // Marker click: do not change zoom; optional pan only
+      map.panTo([selectedSite.latitude, selectedSite.longitude], { animate: true })
+    } else {
+      // Programmatic (sidebar) selection: set view with desired zoom
+      map.setView([selectedSite.latitude, selectedSite.longitude], 10, { animate: true })
+    }
+    selectionByMarkerRef.current = false
 
     // Open popup for selected site
     const marker = markerInstancesRef.current.get(selectedSite.id)
@@ -362,7 +406,19 @@ export default function HeritageMap({
 
   const portal = portalTarget && openSiteId
     ? createPortal(
-        <SiteActionButtons siteId={openSiteId} variant="popup" locale={locale} />,
+        <div
+          onClick={(e) => {
+            e.stopPropagation()
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation()
+          }}
+          onTouchStart={(e) => {
+            e.stopPropagation()
+          }}
+        >
+          <SiteActionButtons siteId={openSiteId} variant="popup" locale={locale} />
+        </div>,
         portalTarget
       )
     : null
