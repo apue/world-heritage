@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useRef } from 'react'
+import { createRoot, Root } from 'react-dom/client'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
@@ -17,6 +18,7 @@ import { Locale } from '@/lib/i18n/config'
 import { useUserSites } from '@/lib/contexts/UserSitesContext'
 import { SITE_STATUS_COLORS, getPrimaryStatus } from '@/lib/design/site-status-colors'
 import type { SiteStatusType } from '@/lib/design/site-status-colors'
+import SiteActionButtons from '@/components/heritage/SiteActionButtons'
 
 interface HeritageMapProps {
   sites: HeritageSite[]
@@ -28,16 +30,10 @@ interface HeritageMapProps {
 
 const popupCopy = {
   en: {
-    viewDetails: 'View details',
-    visited: 'Visited',
-    wishlist: 'Wishlist',
-    bookmark: 'Bookmark',
+    viewDetails: 'Details',
   },
   zh: {
-    viewDetails: '查看详情',
-    visited: '已访问',
-    wishlist: '想去',
-    bookmark: '收藏',
+    viewDetails: '详情',
   },
 } satisfies Record<Locale, Record<string, string>>
 
@@ -86,21 +82,16 @@ function createCustomMarkerIcon(statusType: SiteStatusType): L.DivIcon {
 }
 
 /**
- * Create popup HTML with action buttons
+ * Create popup HTML with container for React buttons
  */
-function createPopupContent(
-  site: HeritageSite,
-  locale: Locale,
-  statusType: SiteStatusType
-): string {
+function createPopupContent(site: HeritageSite, locale: Locale): string {
   const translation = site.translations[locale] ?? site.translations.en
   const copy = popupCopy[locale]
-  const colors = SITE_STATUS_COLORS[statusType]
 
   return `
-    <div class="p-3" style="min-width: 250px;">
-      <!-- Hero Image -->
-      <div class="relative mb-2 h-32 w-full overflow-hidden rounded">
+    <div style="width: 280px;">
+      <!-- Hero Image (full width, no padding) -->
+      <div class="relative h-28 w-full overflow-hidden">
         <img
           src="${site.imageUrl}"
           alt="${translation.name}"
@@ -109,33 +100,30 @@ function createPopupContent(
         />
       </div>
 
-      <!-- Site Info -->
-      <h3 class="mb-1 text-sm font-bold">${translation.name}</h3>
-      <p class="mb-2 text-xs text-gray-600">${translation.states}</p>
+      <!-- Content with padding -->
+      <div class="p-3">
+        <!-- Site Name -->
+        <h3 class="mb-2 text-sm font-bold leading-tight">${translation.name}</h3>
 
-      <!-- Status Badge -->
-      <div class="mb-2 flex items-center gap-2">
-        <span class="inline-block rounded px-2 py-0.5 text-xs" style="
-          background-color: ${colors.light};
-          color: ${colors.dark};
-        ">
-          ${colors.icon} ${colors.label}
-        </span>
-        <span class="inline-block rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
-          ${site.category}
-        </span>
+        <!-- Category + View Details (same row) -->
+        <div class="mb-2 flex items-center justify-between">
+          <span class="inline-block rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
+            ${site.category}
+          </span>
+          <a
+            href="/${locale}/heritage/${site.id}"
+            class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700"
+          >
+            ${copy.viewDetails}
+            <svg class="ml-1 h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6l6 6-6 6" />
+            </svg>
+          </a>
+        </div>
+
+        <!-- Action Buttons Container (React will render here) -->
+        <div id="popup-actions-${site.id}" class="popup-actions-container"></div>
       </div>
-
-      <!-- View Details Link -->
-      <a
-        href="/${locale}/heritage/${site.id}"
-        class="mt-2 inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700"
-      >
-        ${copy.viewDetails}
-        <svg class="ml-1 h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6l6 6-6 6" />
-        </svg>
-      </a>
     </div>
   `
 }
@@ -151,6 +139,7 @@ export default function HeritageMap({
   const markersRef = useRef<L.MarkerClusterGroup | null>(null)
   const markerInstancesRef = useRef<Map<string, L.Marker>>(new Map())
   const containerRef = useRef<HTMLDivElement>(null)
+  const reactRootsRef = useRef<Map<string, Root>>(new Map())
 
   const { getSiteStatus, sitesStatus } = useUserSites()
 
@@ -183,6 +172,16 @@ export default function HeritageMap({
     }
   }, [])
 
+  // Cleanup React roots when component unmounts
+  useEffect(() => {
+    return () => {
+      reactRootsRef.current.forEach((root) => {
+        root.unmount()
+      })
+      reactRootsRef.current.clear()
+    }
+  }, [])
+
   // Update markers when sites or user status changes
   useEffect(() => {
     if (!mapRef.current) return
@@ -192,6 +191,12 @@ export default function HeritageMap({
       mapRef.current.removeLayer(markersRef.current)
     }
     markerInstancesRef.current.clear()
+
+    // Cleanup old React roots
+    reactRootsRef.current.forEach((root) => {
+      root.unmount()
+    })
+    reactRootsRef.current.clear()
 
     // Create marker cluster group
     const markers = L.markerClusterGroup({
@@ -210,11 +215,32 @@ export default function HeritageMap({
       const marker = L.marker([site.latitude, site.longitude], { icon: customIcon })
 
       // Create popup content
-      const popupContent = createPopupContent(site, locale, statusType)
+      const popupContent = createPopupContent(site, locale)
 
       marker.bindPopup(popupContent, {
         maxWidth: 300,
         className: 'custom-popup',
+        autoPan: true,
+        closeButton: true,
+      })
+
+      // Render React component when popup opens
+      marker.on('popupopen', () => {
+        const container = document.getElementById(`popup-actions-${site.id}`)
+        if (container && !reactRootsRef.current.has(site.id)) {
+          const root = createRoot(container)
+          root.render(<SiteActionButtons siteId={site.id} variant="popup" locale={locale} />)
+          reactRootsRef.current.set(site.id, root)
+        }
+      })
+
+      // Cleanup React root when popup closes
+      marker.on('popupclose', () => {
+        const root = reactRootsRef.current.get(site.id)
+        if (root) {
+          root.unmount()
+          reactRootsRef.current.delete(site.id)
+        }
       })
 
       // Handle marker click
