@@ -143,9 +143,12 @@ export default function HeritageMap({
   const mapRef = useRef<L.Map | null>(null)
   const markersRef = useRef<L.MarkerClusterGroup | null>(null)
   const markerInstancesRef = useRef<Map<string, L.Marker>>(new Map())
+  const markerPrimaryStatusRef = useRef<Map<string, SiteStatusType>>(new Map())
   const containerRef = useRef<HTMLDivElement>(null)
-  const [popupTargets, setPopupTargets] = useState<Record<string, HTMLElement>>({})
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
+  const [openSiteId, setOpenSiteId] = useState<string | null>(null)
   const hasFittedRef = useRef<boolean>(false)
+  const openSiteIdRef = useRef<string | null>(null)
 
   const { getSiteStatus, sitesStatus } = useUserSites()
 
@@ -187,14 +190,16 @@ export default function HeritageMap({
       mapRef.current.removeLayer(markersRef.current)
     }
     markerInstancesRef.current.clear()
-    setPopupTargets({})
+    markerPrimaryStatusRef.current.clear()
+    setPortalTarget(null)
+    setOpenSiteId(null)
 
     // Create marker cluster group
     const markers = L.markerClusterGroup({
       chunkedLoading: true,
       spiderfyOnMaxZoom: true,
       showCoverageOnHover: false,
-      zoomToBoundsOnClick: true,
+      zoomToBoundsOnClick: false,
     })
 
     // Add markers for each site
@@ -218,26 +223,23 @@ export default function HeritageMap({
 
       // Render React component when popup opens
       marker.on('popupopen', () => {
+        openSiteIdRef.current = site.id
+        setOpenSiteId(site.id)
         // Use setTimeout to ensure DOM is fully rendered
         setTimeout(() => {
           const container = document.getElementById(`popup-actions-${site.id}`)
           if (!container) return
-
-          setPopupTargets((prev) => {
-            if (prev[site.id] === container) return prev
-            return { ...prev, [site.id]: container }
-          })
+          setPortalTarget(container)
         }, 0)
       })
 
-      // Remove portal when popup closes
+      // Remove portal when popup closes (only if it's the current one)
       marker.on('popupclose', () => {
-        setPopupTargets((prev) => {
-          if (!prev[site.id]) return prev
-          const updated = { ...prev }
-          delete updated[site.id]
-          return updated
-        })
+        if (openSiteIdRef.current === site.id) {
+          openSiteIdRef.current = null
+          setOpenSiteId(null)
+          setPortalTarget(null)
+        }
       })
 
       // Handle marker click
@@ -249,6 +251,7 @@ export default function HeritageMap({
 
       markers.addLayer(marker)
       markerInstancesRef.current.set(site.id, marker)
+      markerPrimaryStatusRef.current.set(site.id, statusType)
     })
 
     mapRef.current.addLayer(markers)
@@ -268,11 +271,37 @@ export default function HeritageMap({
   // Update marker icons when user status changes (no rebuild, keep popups open)
   useEffect(() => {
     if (!mapRef.current) return
+    const changedMarkers: L.Marker[] = []
     markerInstancesRef.current.forEach((marker, siteId) => {
       const status = getSiteStatus(siteId)
-      const statusType = getPrimaryStatus(status)
-      marker.setIcon(createCustomMarkerIcon(statusType))
+      const newType = getPrimaryStatus(status)
+      const oldType = markerPrimaryStatusRef.current.get(siteId)
+      if (newType !== oldType) {
+        marker.setIcon(createCustomMarkerIcon(newType))
+        markerPrimaryStatusRef.current.set(siteId, newType)
+        changedMarkers.push(marker)
+      }
     })
+
+    // Refresh clusters for changed markers only (avoid full reflow)
+    if (changedMarkers.length > 0 && markersRef.current) {
+      const m = markersRef.current as unknown as { refreshClusters?: (layer?: L.Layer) => void }
+      changedMarkers.forEach((mk) => m.refreshClusters?.(mk))
+    }
+
+    // Fallback: if current popup got interrupted, reopen it
+    const currentId = openSiteIdRef.current
+    if (currentId) {
+      const marker = markerInstancesRef.current.get(currentId)
+      if (marker) {
+        const isOpen = (marker as unknown as { isPopupOpen?: () => boolean }).isPopupOpen?.() || false
+        if (!isOpen) {
+          setTimeout(() => {
+            marker.openPopup()
+          }, 0)
+        }
+      }
+    }
   }, [sitesStatus, getSiteStatus])
 
   // Handle selected site
@@ -291,18 +320,17 @@ export default function HeritageMap({
     }
   }, [selectedSite])
 
-  const portals = Object.entries(popupTargets).map(([siteId, container]) =>
-    createPortal(
-      <SiteActionButtons siteId={siteId} variant="popup" locale={locale} />,
-      container,
-      siteId
-    )
-  )
+  const portal = portalTarget && openSiteId
+    ? createPortal(
+        <SiteActionButtons siteId={openSiteId} variant="popup" locale={locale} />,
+        portalTarget
+      )
+    : null
 
   return (
     <>
       <div ref={containerRef} className={`w-full h-full ${className}`} />
-      {portals}
+      {portal}
     </>
   )
 }
