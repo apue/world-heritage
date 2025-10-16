@@ -83,6 +83,7 @@ function createCustomMarkerIcon(statusType: SiteStatusType): L.DivIcon {
 
 /**
  * Create popup HTML with container for React buttons
+ * Uses inline styles to ensure compatibility (Tailwind classes in string templates are not compiled)
  */
 function createPopupContent(site: HeritageSite, locale: Locale): string {
   const translation = site.translations[locale] ?? site.translations.en
@@ -91,38 +92,42 @@ function createPopupContent(site: HeritageSite, locale: Locale): string {
   return `
     <div style="width: 280px;">
       <!-- Hero Image (full width, no padding) -->
-      <div class="relative h-28 w-full overflow-hidden">
+      <div style="position: relative; height: 112px; width: 100%; overflow: hidden;">
         <img
           src="${site.imageUrl}"
           alt="${translation.name}"
-          class="h-full w-full object-cover"
+          style="height: 100%; width: 100%; object-fit: cover;"
           loading="lazy"
         />
       </div>
 
       <!-- Content with padding -->
-      <div class="p-3">
+      <div style="padding: 0.75rem;">
         <!-- Site Name -->
-        <h3 class="mb-2 text-sm font-bold leading-tight">${translation.name}</h3>
+        <h3 style="margin-bottom: 0.5rem; font-size: 0.875rem; font-weight: 700; line-height: 1.25;">
+          ${translation.name}
+        </h3>
 
         <!-- Category + View Details (same row) -->
-        <div class="mb-2 flex items-center justify-between">
-          <span class="inline-block rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
+        <div style="margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+          <span style="display: inline-block; border-radius: 0.25rem; background-color: #dbeafe; padding: 0.125rem 0.5rem; font-size: 0.75rem; color: #1e40af;">
             ${site.category}
           </span>
           <a
             href="/${locale}/heritage/${site.id}"
-            class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700"
+            style="display: inline-flex; align-items: center; font-size: 0.75rem; font-weight: 500; color: #2563eb; text-decoration: none;"
+            onmouseover="this.style.color='#1d4ed8'"
+            onmouseout="this.style.color='#2563eb'"
           >
             ${copy.viewDetails}
-            <svg class="ml-1 h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <svg style="margin-left: 0.25rem; height: 0.75rem; width: 0.75rem;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6l6 6-6 6" />
             </svg>
           </a>
         </div>
 
         <!-- Action Buttons Container (React will render here) -->
-        <div id="popup-actions-${site.id}" class="popup-actions-container"></div>
+        <div id="popup-actions-${site.id}"></div>
       </div>
     </div>
   `
@@ -226,12 +231,15 @@ export default function HeritageMap({
 
       // Render React component when popup opens
       marker.on('popupopen', () => {
-        const container = document.getElementById(`popup-actions-${site.id}`)
-        if (container && !reactRootsRef.current.has(site.id)) {
-          const root = createRoot(container)
-          root.render(<SiteActionButtons siteId={site.id} variant="popup" locale={locale} />)
-          reactRootsRef.current.set(site.id, root)
-        }
+        // Use setTimeout to ensure DOM is fully rendered
+        setTimeout(() => {
+          const container = document.getElementById(`popup-actions-${site.id}`)
+          if (container && !reactRootsRef.current.has(site.id)) {
+            const root = createRoot(container)
+            root.render(<SiteActionButtons siteId={site.id} variant="popup" locale={locale} />)
+            reactRootsRef.current.set(site.id, root)
+          }
+        }, 0)
       })
 
       // Cleanup React root when popup closes
