@@ -236,6 +236,19 @@ export default function HeritageMap({
       // Remove portal when popup closes (only if it's the current one)
       marker.on('popupclose', () => {
         if (openSiteIdRef.current === site.id) {
+          // 在关闭时同步更新当前 site 的 marker 图标（A 方案）
+          const status = getSiteStatus(site.id)
+          const newType = getPrimaryStatus(status)
+          const oldType = markerPrimaryStatusRef.current.get(site.id)
+          if (newType !== oldType) {
+            marker.setIcon(createCustomMarkerIcon(newType))
+            markerPrimaryStatusRef.current.set(site.id, newType)
+            if (markersRef.current) {
+              const m = markersRef.current as unknown as { refreshClusters?: (layer?: L.Layer) => void }
+              m.refreshClusters?.(marker)
+            }
+          }
+
           openSiteIdRef.current = null
           setOpenSiteId(null)
           setPortalTarget(null)
@@ -272,7 +285,11 @@ export default function HeritageMap({
   useEffect(() => {
     if (!mapRef.current) return
     const changedMarkers: L.Marker[] = []
+    const openId = openSiteIdRef.current
     markerInstancesRef.current.forEach((marker, siteId) => {
+      // 如果当前 site 正在显示弹窗，则暂不更新图标，改为在 popupclose 时同步
+      if (openId && siteId === openId) return
+
       const status = getSiteStatus(siteId)
       const newType = getPrimaryStatus(status)
       const oldType = markerPrimaryStatusRef.current.get(siteId)
@@ -283,24 +300,10 @@ export default function HeritageMap({
       }
     })
 
-    // Refresh clusters for changed markers only (avoid full reflow)
+    // 刷新发生变化的 marker 所在的聚合，避免全量重绘
     if (changedMarkers.length > 0 && markersRef.current) {
       const m = markersRef.current as unknown as { refreshClusters?: (layer?: L.Layer) => void }
       changedMarkers.forEach((mk) => m.refreshClusters?.(mk))
-    }
-
-    // Fallback: if current popup got interrupted, reopen it
-    const currentId = openSiteIdRef.current
-    if (currentId) {
-      const marker = markerInstancesRef.current.get(currentId)
-      if (marker) {
-        const isOpen = (marker as unknown as { isPopupOpen?: () => boolean }).isPopupOpen?.() || false
-        if (!isOpen) {
-          setTimeout(() => {
-            marker.openPopup()
-          }, 0)
-        }
-      }
     }
   }, [sitesStatus, getSiteStatus])
 
