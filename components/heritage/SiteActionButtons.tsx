@@ -17,6 +17,7 @@ import {
 } from '@/lib/design/site-status-colors'
 import type { Locale } from '@/lib/i18n/config'
 import { signInWithGoogle } from '@/lib/supabase/auth'
+import LoginPromptModal from '@/components/auth/LoginPromptModal'
 
 interface SiteActionButtonsProps {
   siteId: string
@@ -69,6 +70,7 @@ export default function SiteActionButtons({
 
   const copy = labels[locale]
   const isCompact = variant === 'popup'
+  const [openLogin, setOpenLogin] = useState(false)
 
   // Don't show anything if still loading initial data
   if (isLoading) {
@@ -89,12 +91,7 @@ export default function SiteActionButtons({
   ) => {
     // If not authenticated, initiate sign-in instead of toggling
     if (!user) {
-      try {
-        await signInWithGoogle()
-      } catch (err) {
-        console.error('[SiteActionButtons] Sign-in failed', err)
-        alert('Sign in failed. Please try again.')
-      }
+      setOpenLogin(true)
       return
     }
 
@@ -146,7 +143,9 @@ export default function SiteActionButtons({
             key={btn.type}
             onClick={btn.onClick}
             disabled={isProcessing}
-            className={`${buttonClasses} ${isProcessing ? 'cursor-wait opacity-50' : ''}`}
+            className={`${buttonClasses} ${isProcessing ? 'cursor-wait opacity-50' : ''} mx-1 ${
+              isCompact ? 'w-8 h-8' : 'w-10 h-10'
+            } flex items-center justify-center`}
             style={activeStyles}
             title={btn.label}
             aria-label={btn.label}
@@ -156,12 +155,26 @@ export default function SiteActionButtons({
             ) : (
               <>
                 <span className={isCompact ? 'text-sm' : 'text-base'}>{colors.icon}</span>
-                {!isCompact && <span>{btn.label}</span>}
               </>
             )}
           </button>
         )
       })}
+
+      <LoginPromptModal
+        open={openLogin}
+        locale={locale}
+        onConfirm={async () => {
+          setOpenLogin(false)
+          try {
+            await signInWithGoogle()
+          } catch (err) {
+            console.error('[SiteActionButtons] Sign-in failed', err)
+            alert('Sign in failed. Please try again.')
+          }
+        }}
+        onCancel={() => setOpenLogin(false)}
+      />
     </div>
   )
 }
