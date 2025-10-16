@@ -182,11 +182,17 @@ async function main() {
         continue
       }
 
-      // Filter out components without coordinates
-      const validComponents = components.filter((c) => c.lat && c.lon)
+      // Filter out components without valid coordinates
+      const validComponents = components.filter((c) => {
+        const lat = parseFloat(c.lat)
+        const lon = parseFloat(c.lon)
+        return !isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0
+      })
 
       if (validComponents.length === 0) {
-        console.warn(`   ⚠️  Site ${site.idNumber}: All components missing coordinates, skipping`)
+        console.warn(
+          `   ⚠️  Site ${site.idNumber}: All components missing valid coordinates, skipping`
+        )
         sitesSkipped++
         continue
       }
