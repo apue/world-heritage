@@ -6,7 +6,7 @@
  * Supports custom colored markers based on user site status
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -156,47 +156,62 @@ export default function HeritageMap({
   type UpdateTask = { siteId: string }
   const taskQueueRef = useRef<UpdateTask[]>([])
   const processingRef = useRef<boolean>(false)
-  // Site update states: Idle | PopupOpen | PendingUpdate
-  const siteUpdateStateRef = useRef<Map<string, 'Idle' | 'PopupOpen' | 'PendingUpdate'>>(new Map())
 
-  function enqueueUpdate(siteId: string) {
-    taskQueueRef.current.push({ siteId })
-    processQueue()
-  }
+  const { getSiteStatus, sitesStatus } = useUserSites()
 
-  function processQueue() {
+  // Store latest getSiteStatus in ref to break closure trap
+  const getSiteStatusRef = useRef(getSiteStatus)
+  useEffect(() => {
+    getSiteStatusRef.current = getSiteStatus
+  }, [getSiteStatus])
+
+  const processQueue = useCallback(() => {
     if (processingRef.current) return
     processingRef.current = true
+
+    const updatedMarkers: L.Marker[] = []
+
     while (taskQueueRef.current.length > 0) {
       const task = taskQueueRef.current.shift()!
       const marker = markerInstancesRef.current.get(task.siteId)
       if (!marker) continue
-      const status = getSiteStatus(task.siteId)
+
+      // Use ref to get latest status (breaks closure trap)
+      const status = getSiteStatusRef.current(task.siteId)
       const newType = getPrimaryStatus(status)
       const oldType = markerPrimaryStatusRef.current.get(task.siteId)
+
       if (newType !== oldType) {
         marker.setIcon(createCustomMarkerIcon(newType))
         markerPrimaryStatusRef.current.set(task.siteId, newType)
-        if (markersRef.current) {
-          const m = markersRef.current as unknown as { refreshClusters?: (layer?: L.Layer) => void }
-          m.refreshClusters?.(marker)
-        }
+        updatedMarkers.push(marker)
       }
-      siteUpdateStateRef.current.set(task.siteId, 'Idle')
     }
+
+    // Batch refresh clusters once after all updates
+    if (updatedMarkers.length > 0 && markersRef.current) {
+      const m = markersRef.current as unknown as { refreshClusters?: () => void }
+      m.refreshClusters?.()
+    }
+
     processingRef.current = false
-  }
+  }, [])
 
-  function scheduleUpdateForSite(siteId: string) {
-    const state = siteUpdateStateRef.current.get(siteId) || 'Idle'
-    if (state === 'PopupOpen') {
-      siteUpdateStateRef.current.set(siteId, 'PendingUpdate')
-      return
-    }
-    enqueueUpdate(siteId)
-  }
+  const enqueueUpdate = useCallback(
+    (siteId: string) => {
+      taskQueueRef.current.push({ siteId })
+      processQueue()
+    },
+    [processQueue]
+  )
 
-  const { getSiteStatus, sitesStatus } = useUserSites()
+  const scheduleUpdateForSite = useCallback(
+    (siteId: string) => {
+      // Immediate update: let React's reactivity drive the UI
+      enqueueUpdate(siteId)
+    },
+    [enqueueUpdate]
+  )
 
   // Initialize map
   useEffect(() => {
@@ -268,14 +283,15 @@ export default function HeritageMap({
         cluster.spiderfy()
       } else if (count >= 5) {
         // 子标记较多时使用 fitBounds 到聚合范围
-        const bounds = typeof cluster.getBounds === 'function'
-          ? cluster.getBounds()
-          : new L.LatLngBounds(
-              (typeof cluster.getAllChildMarkers === 'function'
-                ? cluster.getAllChildMarkers()
-                : []
-              ).map((m: L.Marker) => m.getLatLng())
-            )
+        const bounds =
+          typeof cluster.getBounds === 'function'
+            ? cluster.getBounds()
+            : new L.LatLngBounds(
+                (typeof cluster.getAllChildMarkers === 'function'
+                  ? cluster.getAllChildMarkers()
+                  : []
+                ).map((m: L.Marker) => m.getLatLng())
+              )
         if (bounds && bounds.isValid && bounds.isValid() && mapRef.current) {
           mapRef.current.fitBounds(bounds, { padding: [50, 50] })
         }
@@ -298,7 +314,6 @@ export default function HeritageMap({
       setTimeout(() => {
         const container = document.getElementById(`popup-actions-${sid}`)
         if (container) setPortalTarget(container)
-        siteUpdateStateRef.current.set(sid, 'PopupOpen')
       }, 0)
     })
 
@@ -309,11 +324,6 @@ export default function HeritageMap({
       if (!src) return
       const sid = markerToSiteIdRef.current.get(src)
       if (!sid) return
-      const state = siteUpdateStateRef.current.get(sid)
-      if (state === 'PendingUpdate') {
-        enqueueUpdate(sid)
-      }
-      siteUpdateStateRef.current.set(sid, 'Idle')
       if (openSiteIdRef.current === sid) {
         openSiteIdRef.current = null
         setOpenSiteId(null)
@@ -354,7 +364,6 @@ export default function HeritageMap({
       markers.addLayer(marker)
       markerInstancesRef.current.set(site.id, marker)
       markerPrimaryStatusRef.current.set(site.id, statusType)
-      siteUpdateStateRef.current.set(site.id, 'Idle')
     })
 
     mapRef.current.addLayer(markers)
@@ -369,9 +378,10 @@ export default function HeritageMap({
         hasFittedRef.current = true
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sites, locale, onMarkerClick])
 
-  // Update marker icons when user status changes (use queue; defer if popup open)
+  // Update marker icons when user status changes
   useEffect(() => {
     if (!mapRef.current) return
     markerInstancesRef.current.forEach((_, siteId) => {
@@ -382,7 +392,7 @@ export default function HeritageMap({
         scheduleUpdateForSite(siteId)
       }
     })
-  }, [sitesStatus, getSiteStatus])
+  }, [sitesStatus, getSiteStatus, scheduleUpdateForSite])
 
   // Handle selected site (only programmatic selections should change zoom)
   useEffect(() => {
@@ -404,24 +414,25 @@ export default function HeritageMap({
     }
   }, [selectedSite])
 
-  const portal = portalTarget && openSiteId
-    ? createPortal(
-        <div
-          onClick={(e) => {
-            e.stopPropagation()
-          }}
-          onMouseDown={(e) => {
-            e.stopPropagation()
-          }}
-          onTouchStart={(e) => {
-            e.stopPropagation()
-          }}
-        >
-          <SiteActionButtons siteId={openSiteId} variant="popup" locale={locale} />
-        </div>,
-        portalTarget
-      )
-    : null
+  const portal =
+    portalTarget && openSiteId
+      ? createPortal(
+          <div
+            onClick={(e) => {
+              e.stopPropagation()
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation()
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation()
+            }}
+          >
+            <SiteActionButtons siteId={openSiteId} variant="popup" locale={locale} />
+          </div>,
+          portalTarget
+        )
+      : null
 
   return (
     <>
