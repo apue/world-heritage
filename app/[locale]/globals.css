@@ -30,3 +30,15 @@ body {
 .leaflet-container {
   font-family: inherit;
 }
+
+/* Custom popup styles - remove default padding for full-width hero image */
+.leaflet-popup-content-wrapper {
+  padding: 0 !important;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  width: 280px !important;
+}
