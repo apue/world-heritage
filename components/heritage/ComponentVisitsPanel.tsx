@@ -7,7 +7,7 @@ import { useComponentProgress } from '@/lib/hooks/useComponentProgress'
 import { useUserSites } from '@/lib/contexts/UserSitesContext'
 import VisitProgress from '@/components/heritage/VisitProgress'
 import ComponentList from '@/components/heritage/ComponentList'
-import ComponentMap from '@/components/heritage/ComponentMap'
+import ComponentMap from '@/components/map/ComponentMap'
 
 interface ComponentVisitsPanelProps {
   siteId: string
@@ -67,6 +67,8 @@ export default function ComponentVisitsPanel({
               visitedComponentIds={progress.visitedComponentIds}
               selectedComponentId={selectedComponentId}
               onSelectComponent={setSelectedComponentId}
+              locale={locale}
+              className="h-96 rounded-lg border border-gray-200"
             />
             <p className="text-xs text-gray-500">
               {locale === 'zh'

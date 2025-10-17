@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Component Sites UX Prototype</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .design-variant {
+      display: none;
+    }
+    .design-variant.active {
+      display: block;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 p-8">
+  <div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">Component Sites UX Prototype</h1>
+      <p class="text-gray-600">Compare different design approaches for displaying serial properties with components</p>
+    </div>
+
+    <!-- Controls -->
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+      <div class="grid md:grid-cols-2 gap-6">
+        <!-- Site Selector -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Select Example Site:</label>
+          <select id="siteSelector" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option value="1442">1442 - Silk Roads (33 components)</option>
+            <option value="single">Single site (no components)</option>
+            <option value="few">Serial property (3 components)</option>
+          </select>
+        </div>
+
+        <!-- Design Variant Selector -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Design Variant:</label>
+          <select id="variantSelector" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option value="a">Variant A - Two-Level Card (Recommended)</option>
+            <option value="b">Variant B - Tab Navigation</option>
+            <option value="c">Variant C - Compact Collapsible</option>
+            <option value="current">Current Design (for comparison)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Site Data Display -->
+    <div id="siteInfo" class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+      <p class="text-sm text-blue-800"><strong>Loading site data...</strong></p>
+    </div>
+
+    <!-- Design Variants Container -->
+    <div id="designContainer">
+
+      <!-- Variant A: Two-Level Card Design -->
+      <div id="variant-a" class="design-variant active">
+        <div class="space-y-6">
+
+          <!-- Hero Image -->
+          <div class="relative h-80 rounded-lg overflow-hidden">
+            <img id="heroImage-a" src="" alt="Site image" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10"></div>
+            <div class="absolute bottom-0 left-0 right-0 px-6 py-8 text-white">
+              <span class="inline-flex items-center rounded-full bg-blue-500/80 px-3 py-1 text-xs font-semibold uppercase">
+                Cultural
+              </span>
+              <h1 id="siteName-a" class="text-4xl font-bold mt-3">Silk Roads: the Routes Network of Chang'an-Tianshan Corridor</h1>
+              <p class="text-white/80 mt-2">China, Kazakhstan, Kyrgyzstan</p>
+            </div>
+          </div>
+
+          <!-- Property-Level Card -->
+          <div class="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-6 shadow-sm">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-3">
+                  <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  </svg>
+                  <h2 class="text-lg font-semibold text-gray-900">This World Heritage Site</h2>
+                </div>
+
+                <h3 id="propertyName-a" class="text-xl font-bold text-gray-900 mb-2">Silk Roads: the Routes Network of Chang'an-Tianshan Corridor</h3>
+                <p class="text-sm text-gray-600 mb-3">
+                  <span class="font-mono">34.3044°N, 108.8572°E</span>
+                </p>
+
+                <div id="serialBadge-a" class="inline-flex items-center gap-2 bg-white rounded-full px-4 py-2 text-sm border border-blue-200">
+                  <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                  </svg>
+                  <span class="font-medium text-gray-700">Serial property with <strong class="text-blue-700">33 component sites</strong></span>
+                </div>
+              </div>
+
+              <!-- Property-level Actions -->
+              <div class="flex gap-2 ml-4">
+                <button class="inline-flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  Mark as Visited
+                </button>
+                <button class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                  </svg>
+                </button>
+                <button class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Component Sites Section -->
+          <div id="componentSection-a" class="bg-white rounded-lg shadow-sm">
+            <div class="p-6 border-b border-gray-200">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                  </svg>
+                  <h3 class="text-lg font-semibold text-gray-900">Component Sites</h3>
+                  <span class="text-sm text-gray-500">(33 total)</span>
+                </div>
+                <button id="toggleComponents-a" class="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                  <span>Collapse</span>
+                  <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Progress Bar -->
+              <div class="mt-4">
+                <div class="flex items-center justify-between text-sm text-gray-600 mb-2">
+                  <span>Your progress</span>
+                  <span class="font-medium">3 of 33 visited (9%)</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                  <div class="bg-emerald-500 h-2 rounded-full" style="width: 9%"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Component List (Collapsible + Scrollable) -->
+            <div id="componentList-a" class="p-6 max-h-96 overflow-y-auto">
+              <p class="text-sm text-gray-500 mb-4">Showing 10 of 33 components • <button class="text-blue-600 hover:underline">Show all</button></p>
+              <ul class="space-y-3" id="components-a">
+                <!-- Will be populated by JavaScript -->
+              </ul>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Variant B: Tab Navigation -->
+      <div id="variant-b" class="design-variant">
+        <div class="space-y-6">
+
+          <!-- Hero Image -->
+          <div class="relative h-80 rounded-lg overflow-hidden">
+            <img id="heroImage-b" src="" alt="Site image" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10"></div>
+            <div class="absolute bottom-0 left-0 right-0 px-6 py-8 text-white">
+              <span class="inline-flex items-center rounded-full bg-blue-500/80 px-3 py-1 text-xs font-semibold uppercase">
+                Cultural
+              </span>
+              <h1 id="siteName-b" class="text-4xl font-bold mt-3">Silk Roads: the Routes Network of Chang'an-Tianshan Corridor</h1>
+              <p class="text-white/80 mt-2">China, Kazakhstan, Kyrgyzstan</p>
+            </div>
+          </div>
+
+          <!-- Tab Navigation -->
+          <div class="bg-white rounded-lg shadow-sm">
+            <div class="border-b border-gray-200">
+              <nav class="flex -mb-px">
+                <button class="tab-button active px-6 py-4 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
+                  Overview
+                </button>
+                <button class="tab-button px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                  Components <span class="ml-2 bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full text-xs">33</span>
+                </button>
+                <button class="tab-button px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                  Map
+                </button>
+              </nav>
+            </div>
+
+            <!-- Tab Content: Overview -->
+            <div class="p-6">
+              <div class="space-y-6">
+                <div>
+                  <h2 class="text-xl font-semibold text-gray-900 mb-3">About this site</h2>
+                  <p class="text-gray-700 leading-relaxed">
+                    This property is a 5,000 km section of the extensive Silk Roads network, stretching from Chang'an/Luoyang, the central capital of China in the Han and Tang dynasties, to the Zhetysu region of Central Asia.
+                  </p>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex gap-3">
+                  <button class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Mark as Visited
+                  </button>
+                  <button class="inline-flex items-center gap-2 px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                    </svg>
+                    Add to Wishlist
+                  </button>
+                </div>
+
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p class="text-sm text-blue-800">
+                    💡 <strong>Tip:</strong> This is a serial property with 33 component sites. Switch to the "Components" tab to track your visits to individual sites.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Variant C: Compact Collapsible -->
+      <div id="variant-c" class="design-variant">
+        <div class="space-y-6">
+
+          <!-- Hero Image -->
+          <div class="relative h-80 rounded-lg overflow-hidden">
+            <img id="heroImage-c" src="" alt="Site image" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10"></div>
+            <div class="absolute bottom-0 left-0 right-0 px-6 py-8 text-white">
+              <span class="inline-flex items-center rounded-full bg-blue-500/80 px-3 py-1 text-xs font-semibold uppercase">
+                Cultural
+              </span>
+              <h1 id="siteName-c" class="text-4xl font-bold mt-3">Silk Roads: the Routes Network of Chang'an-Tianshan Corridor</h1>
+              <p class="text-white/80 mt-2">China, Kazakhstan, Kyrgyzstan</p>
+
+              <!-- Actions in Hero -->
+              <div class="flex gap-3 mt-4">
+                <button class="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-gray-900 rounded-lg font-medium hover:bg-gray-100 transition">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  Visited
+                </button>
+                <button class="inline-flex items-center gap-2 px-5 py-2.5 bg-white/20 backdrop-blur text-white rounded-lg font-medium hover:bg-white/30 transition border border-white/40">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                  </svg>
+                  Wishlist
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Overview -->
+          <div class="bg-white rounded-lg shadow-sm p-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-3">Overview</h2>
+            <p class="text-gray-700 leading-relaxed">
+              This property is a 5,000 km section of the extensive Silk Roads network, stretching from Chang'an/Luoyang, the central capital of China in the Han and Tang dynasties, to the Zhetysu region of Central Asia.
+            </p>
+          </div>
+
+          <!-- Component Sites Compact Card -->
+          <div id="componentCard-c" class="bg-white rounded-lg shadow-sm p-6">
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <h3 class="text-lg font-semibold text-gray-900">Component Sites</h3>
+                <p class="text-sm text-gray-600 mt-1">This property includes 33 component sites across 3 countries. Track your visits to individual components below.</p>
+              </div>
+            </div>
+
+            <!-- Progress -->
+            <div class="mb-4">
+              <div class="flex items-center justify-between text-sm mb-2">
+                <span class="text-gray-600">Your progress</span>
+                <span class="font-medium text-gray-900">3 / 33 visited</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-3">
+                <div class="bg-emerald-500 h-3 rounded-full flex items-center justify-end pr-2" style="width: 9%">
+                  <span class="text-xs text-white font-medium">9%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Toggle Button -->
+            <button id="toggleComponents-c" class="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition">
+              <span class="text-sm font-medium text-gray-700">▶ Show component sites</span>
+              <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+
+            <!-- Collapsible List -->
+            <div id="componentList-c" class="hidden mt-4 max-h-96 overflow-y-auto border-t border-gray-200 pt-4">
+              <ul class="space-y-2" id="components-c">
+                <!-- Will be populated by JavaScript -->
+              </ul>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Current Design (for comparison) -->
+      <div id="variant-current" class="design-variant">
+        <div class="space-y-6">
+
+          <!-- Hero Image -->
+          <div class="relative h-80 rounded-lg overflow-hidden">
+            <img id="heroImage-current" src="" alt="Site image" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10"></div>
+            <div class="absolute bottom-0 left-0 right-0 px-6 py-8 text-white">
+              <span class="inline-flex items-center rounded-full bg-blue-500/80 px-3 py-1 text-xs font-semibold uppercase">
+                Cultural
+              </span>
+              <h1 id="siteName-current" class="text-4xl font-bold mt-3">Silk Roads: the Routes Network of Chang'an-Tianshan Corridor</h1>
+              <p class="text-white/80 mt-2">China, Kazakhstan, Kyrgyzstan</p>
+
+              <!-- Actions -->
+              <div class="flex gap-2 mt-4">
+                <button class="inline-flex items-center gap-2 px-4 py-2 bg-white text-gray-900 rounded-lg text-sm font-medium">
+                  Visited ✓
+                </button>
+                <button class="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur text-white rounded-lg text-sm font-medium border border-white/40">
+                  ♡ Wishlist
+                </button>
+                <button class="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur text-white rounded-lg text-sm font-medium border border-white/40">
+                  🔖 Bookmark
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Overview -->
+          <div class="bg-white rounded-lg shadow-sm p-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-3">Overview</h2>
+            <p class="text-gray-700 leading-relaxed">
+              This property is a 5,000 km section of the extensive Silk Roads network, stretching from Chang'an/Luoyang, the central capital of China in the Han and Tang dynasties, to the Zhetysu region of Central Asia.
+            </p>
+          </div>
+
+          <!-- Component List (Current Implementation) -->
+          <div id="componentSection-current" class="bg-white rounded-lg shadow-sm p-5">
+            <h3 class="text-base font-semibold text-gray-900 mb-1">Component sites</h3>
+            <p class="text-sm text-gray-500 mb-4">Sign in to track visits</p>
+
+            <ul class="space-y-3" id="components-current">
+              <!-- Will be populated by JavaScript -->
+            </ul>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // Load site data from public/sites.json
+    let sitesData = [];
+    let currentSite = null;
+
+    async function loadSiteData() {
+      try {
+        const response = await fetch('/sites.json');
+        sitesData = await response.json();
+        updateSiteDisplay();
+      } catch (error) {
+        console.error('Failed to load site data:', error);
+        document.getElementById('siteInfo').innerHTML = `
+          <p class="text-sm text-red-800">
+            <strong>Error:</strong> Could not load site data. Make sure you're running this from a local server with access to /sites.json
+          </p>
+        `;
+      }
+    }
+
+    function updateSiteDisplay() {
+      const siteId = document.getElementById('siteSelector').value;
+
+      if (siteId === 'single') {
+        // Find a site without components
+        currentSite = sitesData.find(s => !s.hasComponents || !s.components || s.components.length === 0);
+      } else if (siteId === 'few') {
+        // Find a site with few components (2-5)
+        currentSite = sitesData.find(s => s.components && s.components.length >= 2 && s.components.length <= 5);
+      } else {
+        // Find specific site by ID
+        currentSite = sitesData.find(s => s.id === siteId);
+      }
+
+      if (!currentSite) {
+        document.getElementById('siteInfo').innerHTML = `
+          <p class="text-sm text-red-800"><strong>Site not found!</strong></p>
+        `;
+        return;
+      }
+
+      // Update info panel
+      const componentCount = currentSite.components?.length || 0;
+      document.getElementById('siteInfo').innerHTML = `
+        <p class="text-sm text-blue-800">
+          <strong>Current site:</strong> ${currentSite.translations.en.name} (ID: ${currentSite.id}) •
+          <strong>Components:</strong> ${componentCount} •
+          <strong>Category:</strong> ${currentSite.category}
+        </p>
+      `;
+
+      // Update all variants
+      updateVariantA();
+      updateVariantB();
+      updateVariantC();
+      updateVariantCurrent();
+    }
+
+    function updateVariantA() {
+      const site = currentSite;
+      const components = site.components || [];
+
+      document.getElementById('heroImage-a').src = site.imageUrl;
+      document.getElementById('siteName-a').textContent = site.translations.en.name;
+      document.getElementById('propertyName-a').textContent = site.translations.en.name;
+
+      // Show/hide serial badge
+      const serialBadge = document.getElementById('serialBadge-a');
+      const componentSection = document.getElementById('componentSection-a');
+
+      if (components.length > 0) {
+        serialBadge.style.display = 'inline-flex';
+        serialBadge.innerHTML = `
+          <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+          </svg>
+          <span class="font-medium text-gray-700">Serial property with <strong class="text-blue-700">${components.length} component sites</strong></span>
+        `;
+        componentSection.style.display = 'block';
+
+        // Populate component list
+        const list = document.getElementById('components-a');
+        const displayCount = Math.min(10, components.length);
+        list.innerHTML = components.slice(0, displayCount).map((comp, idx) => `
+          <li class="flex items-center justify-between gap-4 rounded-lg border border-gray-100 p-3 hover:border-blue-200 transition">
+            <div>
+              <p class="text-sm font-medium text-gray-900">${comp.name.en}</p>
+              <div class="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                <span>${comp.componentId}</span>
+                <span>${comp.latitude.toFixed(3)}, ${comp.longitude.toFixed(3)}</span>
+              </div>
+            </div>
+            <button class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium ${idx < 3 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'}">
+              ${idx < 3 ? `
+                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                </svg>
+                Visited
+              ` : `
+                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"/>
+                </svg>
+                Mark as visited
+              `}
+            </button>
+          </li>
+        `).join('');
+      } else {
+        serialBadge.style.display = 'none';
+        componentSection.style.display = 'none';
+      }
+    }
+
+    function updateVariantB() {
+      const site = currentSite;
+      document.getElementById('heroImage-b').src = site.imageUrl;
+      document.getElementById('siteName-b').textContent = site.translations.en.name;
+    }
+
+    function updateVariantC() {
+      const site = currentSite;
+      const components = site.components || [];
+
+      document.getElementById('heroImage-c').src = site.imageUrl;
+      document.getElementById('siteName-c').textContent = site.translations.en.name;
+
+      const componentCard = document.getElementById('componentCard-c');
+      if (components.length > 0) {
+        componentCard.style.display = 'block';
+
+        // Populate component list
+        const list = document.getElementById('components-c');
+        list.innerHTML = components.map((comp, idx) => `
+          <li class="flex items-center justify-between gap-3 p-2 rounded hover:bg-gray-50">
+            <span class="text-sm text-gray-700">${comp.name.en}</span>
+            <button class="text-sm ${idx < 3 ? 'text-emerald-600 font-medium' : 'text-gray-500'}">
+              ${idx < 3 ? '✓ Visited' : 'Mark'}
+            </button>
+          </li>
+        `).join('');
+      } else {
+        componentCard.style.display = 'none';
+      }
+    }
+
+    function updateVariantCurrent() {
+      const site = currentSite;
+      const components = site.components || [];
+
+      document.getElementById('heroImage-current').src = site.imageUrl;
+      document.getElementById('siteName-current').textContent = site.translations.en.name;
+
+      const componentSection = document.getElementById('componentSection-current');
+      if (components.length > 0) {
+        componentSection.style.display = 'block';
+
+        // Populate component list (current design)
+        const list = document.getElementById('components-current');
+        list.innerHTML = components.map((comp, idx) => `
+          <li class="flex items-center justify-between gap-4 rounded-lg border border-gray-100 p-3">
+            <div>
+              <p class="text-sm font-medium text-gray-900">${comp.name.en}</p>
+              <div class="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                <span>${comp.componentId}</span>
+                <span>${comp.latitude.toFixed(3)}, ${comp.longitude.toFixed(3)}</span>
+              </div>
+            </div>
+            <button class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${idx < 3 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'} opacity-60 cursor-not-allowed">
+              ${idx < 3 ? 'Visited' : 'Mark as visited'}
+            </button>
+          </li>
+        `).join('');
+      } else {
+        componentSection.style.display = 'none';
+      }
+    }
+
+    // Event listeners
+    document.getElementById('siteSelector').addEventListener('change', updateSiteDisplay);
+
+    document.getElementById('variantSelector').addEventListener('change', (e) => {
+      document.querySelectorAll('.design-variant').forEach(el => el.classList.remove('active'));
+      document.getElementById(`variant-${e.target.value}`).classList.add('active');
+    });
+
+    // Toggle components in Variant A
+    document.getElementById('toggleComponents-a').addEventListener('click', (e) => {
+      const list = document.getElementById('componentList-a');
+      const button = e.currentTarget;
+      if (list.style.display === 'none') {
+        list.style.display = 'block';
+        button.innerHTML = `
+          <span>Collapse</span>
+          <svg class="w-4 h-4 transition-transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        `;
+      } else {
+        list.style.display = 'none';
+        button.innerHTML = `
+          <span>Expand</span>
+          <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        `;
+      }
+    });
+
+    // Toggle components in Variant C
+    document.getElementById('toggleComponents-c').addEventListener('click', (e) => {
+      const list = document.getElementById('componentList-c');
+      const button = e.currentTarget;
+      if (list.classList.contains('hidden')) {
+        list.classList.remove('hidden');
+        button.innerHTML = `
+          <span class="text-sm font-medium text-gray-700">▼ Hide component sites</span>
+          <svg class="w-5 h-5 text-gray-500 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        `;
+      } else {
+        list.classList.add('hidden');
+        button.innerHTML = `
+          <span class="text-sm font-medium text-gray-700">▶ Show component sites</span>
+          <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        `;
+      }
+    });
+
+    // Initialize
+    loadSiteData();
+  </script>
+</body>
+</html>
