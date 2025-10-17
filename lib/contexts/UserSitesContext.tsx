@@ -75,31 +75,33 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
     [sitesStatus]
   )
 
-  const applyVisitProgress = useCallback(
-    (siteId: string, progress: PropertyVisitProgress) => {
-      const previousStatus = getSiteStatus(siteId)
+  const applyVisitProgress = useCallback((siteId: string, progress: PropertyVisitProgress) => {
+    let previouslyVisited = false
 
-      setSitesStatus((prev) => {
-        const next = new Map(prev)
-        next.set(siteId, {
-          ...previousStatus,
-          visited: progress.isVisited,
-          visitProgress: progress,
-        })
-        return next
+    setSitesStatus((prev) => {
+      const next = new Map(prev)
+      const previousStatus = prev.get(siteId) ?? DEFAULT_STATUS
+      previouslyVisited = previousStatus.visited
+      next.set(siteId, {
+        ...previousStatus,
+        visited: progress.isVisited,
+        visitProgress: progress,
       })
+      return next
+    })
 
-      setStats((prev) => {
-        const delta = progress.isVisited && !previousStatus.visited ? 1 : 0
-        const negativeDelta = !progress.isVisited && previousStatus.visited ? -1 : 0
-        return {
-          ...prev,
-          visited: Math.max(0, prev.visited + delta + negativeDelta),
-        }
-      })
-    },
-    [getSiteStatus]
-  )
+    setStats((prev) => {
+      const delta = progress.isVisited && !previouslyVisited ? 1 : 0
+      const negativeDelta = !progress.isVisited && previouslyVisited ? -1 : 0
+      if (delta === 0 && negativeDelta === 0) {
+        return prev
+      }
+      return {
+        ...prev,
+        visited: Math.max(0, prev.visited + delta + negativeDelta),
+      }
+    })
+  }, [])
 
   const loadAllUserSites = useCallback(
     async (userId: string) => {

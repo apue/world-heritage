@@ -46,7 +46,7 @@ export function useComponentProgress(siteId: string): ProgressState {
     [applyVisitProgress, siteId]
   )
 
-  const fetchProgress = useCallback(async () => {
+  const refresh = useCallback(async () => {
     if (!user) {
       syncProgress(fallbackProgress)
       setIsLoading(false)
@@ -72,11 +72,49 @@ export function useComponentProgress(siteId: string): ProgressState {
     } finally {
       setIsLoading(false)
     }
-  }, [user, siteId, syncProgress, fallbackProgress])
+  }, [fallbackProgress, siteId, syncProgress, user])
 
   useEffect(() => {
-    fetchProgress()
-  }, [fetchProgress])
+    let cancelled = false
+    const load = async () => {
+      setIsLoading(Boolean(user))
+      if (!user) {
+        syncProgress(fallbackProgress)
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/user/visits/progress/${siteId}`)
+        if (!response.ok) {
+          throw new Error(`Failed with status ${response.status}`)
+        }
+        const { progress: serverProgress } = (await response.json()) as {
+          progress: PropertyVisitProgress
+        }
+        if (!cancelled) {
+          syncProgress(serverProgress)
+          setError(null)
+        }
+      } catch (err) {
+        console.error('[useComponentProgress] Failed to load progress', err)
+        if (!cancelled) {
+          setError('Failed to load progress')
+          syncProgress(fallbackProgress)
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [siteId, user, fallbackProgress, syncProgress])
 
   const optimisticUpdate = useCallback(
     (componentId: string, shouldAdd: boolean) => {
@@ -198,7 +236,7 @@ export function useComponentProgress(siteId: string): ProgressState {
     progress,
     isLoading,
     error,
-    refresh: fetchProgress,
+    refresh,
     markComponent,
     unmarkComponent,
   }
