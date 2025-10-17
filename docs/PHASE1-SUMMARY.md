@@ -214,10 +214,10 @@ This runs all 3 stages:
 
 Ready to proceed with **Phase 2: Database Layer**:
 
-- Create `user_component_visits` table
+- Create `user_component_visits` table and supporting RLS policies
 - Update `user_wishlist` and `user_bookmarks` for component scope
 - Create aggregation views and functions
-- Migrate existing `user_visits` data
+- Mark legacy `user_visits` table as read-only (drop comes after full rollout)
 
 Estimated time: 2.5 hours
 

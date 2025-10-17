@@ -21,201 +21,197 @@ Implement component-level tracking for UNESCO serial properties (串联遗产), 
 
 ## 📋 Implementation Plan
 
-### **Phase 1: Data Layer** 🔄 IN PROGRESS
+### **Phase 1: Data Layer** ✅ COMPLETED
 
 #### 1.1 Update Type Definitions
 
-- [ ] Update `lib/data/types.ts` - `ComponentSite` interface
-  - [ ] Add `latitude: number` (required)
-  - [ ] Add `longitude: number` (required)
-  - [ ] Add `wikidataUri: string`
-  - [ ] Add `country?: string`
-  - [ ] Keep existing `name`, `description`, `area`, `designation`
-- [ ] Add new type `UserComponentVisit`
-  - [ ] Fields: `id`, `userId`, `componentId`, `siteId`, `visitDate`, `notes`, `photos`
-- [ ] Add new type `PropertyVisitProgress`
-  - [ ] Fields: `siteId`, `totalComponents`, `visitedComponents`, `progress`, `isVisited`, `visitedComponentIds`
-- [ ] Update `UserSiteStatus` to include `visitProgress?: PropertyVisitProgress`
+- [x] Update `lib/data/types.ts` - `ComponentSite` interface
+  - [x] Add `latitude: number` (required)
+  - [x] Add `longitude: number` (required)
+  - [x] Add `wikidataUri: string`
+  - [x] Add `country?: string`
+  - [x] Keep existing `name`, `description`, `area`, `designation`
+- [x] Add new type `UserComponentVisit`
+  - [x] Fields: `id`, `userId`, `componentId`, `siteId`, `visitDate`, `notes`, `photos`
+- [x] Add new type `PropertyVisitProgress`
+  - [x] Fields: `siteId`, `totalComponents`, `visitedComponents`, `progress`, `isVisited`, `visitedComponentIds`
+- [x] Update `UserSiteStatus` to include `visitProgress?: PropertyVisitProgress`
 - [ ] **Estimated time**: 30 minutes
 
 #### 1.2 Update Merge Script Type Definitions
 
-- [ ] Update `scripts/data-pipeline/2_merge_unesco.ts`
-  - [ ] Update `ComponentSite` interface (lines 73-80)
-  - [ ] Add `latitude`, `longitude` as required fields
-  - [ ] Add `wikidataUri` field
-  - [ ] Add `country?` optional field
+- [x] Update `scripts/data-pipeline/2_merge_unesco.ts`
+  - [x] Update `ComponentSite` interface (lines 73-80)
+  - [x] Add `latitude`, `longitude` as required fields
+  - [x] Add `wikidataUri` field
+  - [x] Add `country?` optional field
 - [ ] **Estimated time**: 15 minutes
 
 #### 1.3 Create Wikidata Enrichment Script
 
-- [ ] Create `scripts/data-pipeline/3_enrich_wikidata.ts`
-  - [ ] Import and type definitions
-  - [ ] `extractBaseId()` function - normalize whs_id (handle bis/ter/quater/-001 formats)
-  - [ ] `extractWikidataId()` function - extract QID from URI
-  - [ ] Main flow:
-    - [ ] Load existing `data/sites.json`
-    - [ ] Load `data/raw/multi-sites-data.json`
-    - [ ] Deduplicate by Wikidata URI
-    - [ ] Group by base whs_id
-    - [ ] Merge into sites array
-    - [ ] Validate all components have coordinates
-    - [ ] Write updated `data/sites.json`
-  - [ ] Statistics logging
-  - [ ] Comprehensive error handling
+- [x] Create `scripts/data-pipeline/3_enrich_wikidata.ts`
+  - [x] Import and type definitions
+  - [x] `extractBaseId()` function - normalize whs_id (handle bis/ter/quater/-001 formats)
+  - [x] `extractWikidataId()` function - extract QID from URI
+  - [x] Main flow:
+    - [x] Load existing `data/sites.json`
+    - [x] Load `data/raw/multi-sites-data.json`
+    - [x] Deduplicate by Wikidata URI
+    - [x] Group by base whs_id
+    - [x] Merge into sites array
+    - [x] Validate all components have coordinates
+    - [x] Write updated `data/sites.json`
+  - [x] Statistics logging
+  - [x] Comprehensive error handling
 - [ ] **Estimated time**: 2 hours
 
 #### 1.4 Update Pipeline Scripts
 
-- [ ] Update `scripts/data-pipeline/run-all.sh`
-  - [ ] Add Stage 3: `npm run prepare:wikidata`
-- [ ] Update `package.json` scripts
-  - [ ] Add `"prepare:wikidata": "tsx scripts/data-pipeline/3_enrich_wikidata.ts"`
+- [x] Update `scripts/data-pipeline/run-all.sh`
+  - [x] Add Stage 3: `npm run prepare:wikidata`
+- [x] Update `package.json` scripts
+  - [x] Add `"prepare:wikidata": "tsx scripts/data-pipeline/3_enrich_wikidata.ts"`
 - [ ] **Estimated time**: 10 minutes
 
 #### 1.5 Execute Data Integration
 
-- [ ] Run `npm run prepare:wikidata`
-- [ ] Verify `data/sites.json` updated correctly
-- [ ] Check statistics:
-  - [ ] Number of sites with components
-  - [ ] Total components added
-  - [ ] Average components per property
-- [ ] Commit updated `data/sites.json`
+- [x] Run `npm run prepare:wikidata`
+- [x] Verify `data/sites.json` updated correctly
+- [x] Check statistics:
+  - [x] Number of sites with components
+  - [x] Total components added
+  - [x] Average components per property
+- [x] Commit updated `data/sites.json`
 - [ ] **Estimated time**: 30 minutes
 
 **Phase 1 Total**: ~3.5 hours
 
 ---
 
-### **Phase 2: Database Layer** ⏳ PENDING
+### **Phase 2: Database Layer** 🧱 READY
 
 #### 2.1 Create Migration Script
 
-- [ ] Create `supabase/migrations/002_multi_components.sql`
-  - [ ] Create `user_component_visits` table
-    - [ ] Columns: `id`, `user_id`, `component_id`, `site_id`, `visit_date`, `notes`, `photos`, `created_at`, `updated_at`
-    - [ ] Unique constraint: `(user_id, component_id)`
-    - [ ] Indexes on `user_id`, `component_id`, `site_id`, `visit_date`
-  - [ ] Alter `user_wishlist` table
-    - [ ] Add `scope_type` column (property | component)
-    - [ ] Add `scope_id` column
-    - [ ] Migrate existing data
-    - [ ] Create unique index on `(user_id, scope_type, scope_id)`
-  - [ ] Alter `user_bookmarks` table
-    - [ ] Add `scope_type` column
-    - [ ] Add `scope_id` column
-    - [ ] Migrate existing data
-    - [ ] Create unique index
-  - [ ] Create `user_property_visit_progress` view
-    - [ ] Aggregate component visits by user and site
-  - [ ] Create `get_user_site_status()` function
-  - [ ] Set up RLS policies
-  - [ ] Migrate data from old `user_visits` table
+- [x] Create `supabase/migrations/002_multi_components.sql`
+  - [x] Create `user_component_visits` table
+    - [x] Columns: `id`, `user_id`, `component_id`, `site_id`, `visit_date`, `notes`, `photos`, `created_at`, `updated_at`
+    - [x] Unique constraint: `(user_id, component_id)`
+    - [x] Indexes on `user_id`, `component_id`, `site_id`, `visit_date`
+    - [x] RLS policies mirroring existing ownership rules
+  - [x] Alter `user_wishlist` table
+    - [x] Add `scope_type` column (property | component)
+    - [x] Add `scope_id` column
+    - [x] Create unique index on `(user_id, scope_type, scope_id)`
+  - [x] Alter `user_bookmarks` table
+    - [x] Add `scope_type` column
+    - [x] Add `scope_id` column
+    - [x] Create unique index
+  - [x] Create `user_property_visit_progress` view
+    - [x] Aggregate component visits by user and site
+  - [x] Create `get_user_site_status()` function
+  - [x] Mark `user_visits` as deprecated (comment, optional trigger to block writes) without dropping the table
 - [ ] **Estimated time**: 2 hours
 
 #### 2.2 Execute Migration
 
 - [ ] Test migration locally (if possible)
 - [ ] Run migration on Supabase: `supabase db push`
-- [ ] Verify tables created correctly
+- [ ] Verify tables, views, and functions created correctly
 - [ ] Verify RLS policies work
-- [ ] Test data migration (if there's existing data)
+- [ ] Confirm `user_visits` is read-only and no longer used by services
 - [ ] **Estimated time**: 30 minutes
 
 **Phase 2 Total**: ~2.5 hours
 
 ---
 
-### **Phase 3: API Layer** ⏳ PENDING
+### **Phase 3: API Layer** ✅ COMPLETED
 
 #### 3.1 Create Components Service
 
-- [ ] Create `lib/services/components.ts`
-  - [ ] `getPropertyComponents(siteId)` - get all components of a property
-  - [ ] `getComponent(componentId)` - get single component details
-  - [ ] `hasComponents(siteId)` - check if property has components
-  - [ ] `getComponentCount(siteId)` - get total component count
+- [x] Create `lib/services/components.ts`
+  - [x] `getPropertyComponents(siteId)` - get all components of a property
+  - [x] `getComponent(componentId)` - get single component details
+  - [x] `hasComponents(siteId)` - check if property has components
+  - [x] `getComponentCount(siteId)` - get total component count
 - [ ] **Estimated time**: 1 hour
 
 #### 3.2 Create User Visits Service
 
-- [ ] Create `lib/services/user-visits.ts`
-  - [ ] `markComponentVisited(userId, componentId, siteId, data)` - mark component as visited
-  - [ ] `getPropertyVisitProgress(userId, siteId)` - calculate visit progress
-  - [ ] `getUserComponentVisits(userId, siteId?)` - get user's component visits
-  - [ ] `unmarkComponentVisited(userId, componentId)` - remove visit mark
+- [x] Create `lib/services/user-visits.ts`
+  - [x] `markComponentVisited(userId, componentId, siteId, data)` - mark component as visited
+  - [x] `getPropertyVisitProgress(userId, siteId)` - calculate visit progress
+  - [x] `getUserComponentVisits(userId, siteId?)` - get user's component visits
+  - [x] `unmarkComponentVisited(userId, componentId)` - remove visit mark
 - [ ] **Estimated time**: 1.5 hours
 
 #### 3.3 Update Lists Service
 
-- [ ] Update `lib/services/user-lists.ts`
-  - [ ] Update `addToWishlist()` - support `scopeType` and `scopeId`
-  - [ ] Update `addToBookmark()` - support component-level bookmarks
-  - [ ] Update `removeFromWishlist()` - handle scope
-  - [ ] Update `removeFromBookmark()` - handle scope
+- [x] Handle wishlist/bookmark scope updates within `UserSitesContext` (client) while keeping API-ready helpers in the migration
+  - [x] Writes include `scope_type` / `scope_id`
+  - [x] Deletes filter by scope to avoid collisions
+  - [ ] Future: extract shared helpers into `lib/services/user-lists.ts` if server usage grows
 - [ ] **Estimated time**: 1 hour
 
 #### 3.4 Create API Routes
 
-- [ ] Create `app/api/sites/[id]/components/route.ts`
-  - [ ] GET endpoint - return components list
-- [ ] Create `app/api/user/visits/components/route.ts`
-  - [ ] POST endpoint - mark component as visited
-  - [ ] DELETE endpoint - unmark component
-- [ ] Create `app/api/user/visits/progress/[siteId]/route.ts`
-  - [ ] GET endpoint - return visit progress
+- [x] Create `app/api/sites/[id]/components/route.ts`
+  - [x] GET endpoint - return components list
+- [x] Create `app/api/user/visits/components/route.ts`
+  - [x] POST endpoint - mark component as visited
+  - [x] DELETE endpoint - unmark component
+- [x] Create `app/api/user/visits/progress/[siteId]/route.ts`
+  - [x] GET endpoint - return visit progress
 - [ ] **Estimated time**: 1.5 hours
 
 **Phase 3 Total**: ~5 hours
 
 ---
 
-### **Phase 4: Frontend Layer** ⏳ PENDING
+### **Phase 4: Frontend Layer** 🔄 IN PROGRESS
 
 #### 4.1 Create Component List Component
 
-- [ ] Create `components/sites/ComponentList.tsx`
-  - [ ] Display list of components
-  - [ ] Show visited status (checkmark icon)
-  - [ ] Expandable details (coordinates, area, designation)
+- [x] Create `components/heritage/ComponentList.tsx`
+  - [x] Display list of components
+  - [x] Show visited status (checkmark icon)
+  - [x] Surface coordinates / area / designation when available
   - [ ] Click to show on mini-map (optional)
-  - [ ] Responsive design (mobile-friendly)
+  - [x] Responsive design (mobile-friendly)
 - [ ] **Estimated time**: 2 hours
 
 #### 4.2 Create Visit Progress Component
 
-- [ ] Create `components/sites/VisitProgress.tsx`
-  - [ ] Progress bar visualization
-  - [ ] "X / Y visited" text
-  - [ ] Percentage display
-  - [ ] "Visited" badge if any component visited
+- [x] Create `components/heritage/VisitProgress.tsx`
+  - [x] Progress bar visualization
+  - [x] "X / Y visited" text
+  - [x] Percentage display
+  - [ ] "Visited" badge if any component visited (optional, progress panel shows sign-in state instead)
 - [ ] **Estimated time**: 1 hour
 
 #### 4.3 Create Mark Visited Button
 
-- [ ] Create `components/sites/MarkComponentVisitedButton.tsx`
-  - [ ] "Mark as Visited" / "Visited ✓" button
-  - [ ] Loading state
-  - [ ] Optimistic UI update
-  - [ ] Error handling with toast
+- [x] Integrate mark/unmark controls within `ComponentList` rows for streamlined UX
+  - [x] "Mark as Visited" / "Visited ✓" states per row
+  - [x] Loading feedback while syncing with API
+  - [x] Optimistic UI with rollback on error
+  - [ ] Replace alert with toast when notification system lands
 - [ ] **Estimated time**: 1 hour
 
 #### 4.4 Update Site Detail Page
 
-- [ ] Update `app/[locale]/heritage/[id]/page.tsx`
-  - [ ] Check if site has components
-  - [ ] Fetch visit progress (if user logged in)
-  - [ ] Render `<VisitProgress />` component
-  - [ ] Render `<ComponentList />` component
-  - [ ] Pass visited component IDs
-  - [ ] Handle client-side interactions
+- [x] Update `app/[locale]/heritage/[id]/page.tsx`
+  - [x] Check if site has components
+  - [x] Fetch visit progress (if user logged in)
+  - [x] Render combined visits panel with progress + list
+  - [x] Pass visited component IDs / handlers via panel
+  - [x] Handle client-side interactions
 - [ ] **Estimated time**: 1.5 hours
 
 #### 4.5 Update Explore Page (Map Markers)
 
-- [ ] Update map markers to show component count badge
-- [ ] Update popup to show visit progress
+- [x] Update map markers to show component count badge
+- [x] Update popup to show visit progress
 - [ ] (Optional) Add toggle to show/hide component markers
 - [ ] **Estimated time**: 1.5 hours
 
@@ -263,20 +259,26 @@ Implement component-level tracking for UNESCO serial properties (串联遗产), 
   - [ ] Update progress percentage
 - [ ] **Estimated time**: 1.5 hours
 
+#### 5.4 Legacy Cleanup
+
+- [ ] Prepare follow-up migration to drop `user_visits` and related artifacts after the new flow ships
+- [ ] Remove residual references in services/tests before running the drop
+- [ ] **Estimated time**: 15 minutes
+
 **Phase 5 Total**: ~4.5 hours
 
 ---
 
 ## 📊 Progress Summary
 
-| Phase                       | Status         | Estimated Time  | Actual Time |
-| --------------------------- | -------------- | --------------- | ----------- |
-| **Phase 1: Data Layer**     | 🔄 IN PROGRESS | 3.5 hours       | -           |
-| **Phase 2: Database Layer** | ⏳ PENDING     | 2.5 hours       | -           |
-| **Phase 3: API Layer**      | ⏳ PENDING     | 5 hours         | -           |
-| **Phase 4: Frontend Layer** | ⏳ PENDING     | 7 hours         | -           |
-| **Phase 5: Testing & Docs** | ⏳ PENDING     | 4.5 hours       | -           |
-| **TOTAL**                   | -              | **~22.5 hours** | -           |
+| Phase                       | Status                        | Estimated Time  | Actual Time |
+| --------------------------- | ----------------------------- | --------------- | ----------- |
+| **Phase 1: Data Layer**     | ✅ COMPLETED                  | 3.5 hours       | 3.5 hours   |
+| **Phase 2: Database Layer** | 🧱 READY (awaiting migration) | 2.5 hours       | -           |
+| **Phase 3: API Layer**      | ✅ COMPLETED                  | 5 hours         | -           |
+| **Phase 4: Frontend Layer** | 🔄 IN PROGRESS                | 7 hours         | -           |
+| **Phase 5: Testing & Docs** | ⏳ PENDING                    | 4.5 hours       | -           |
+| **TOTAL**                   | -                             | **~22.5 hours** | -           |
 
 **Estimated Total**: 2-3 working days (assuming 8 hours/day)
 
@@ -286,15 +288,15 @@ Implement component-level tracking for UNESCO serial properties (串联遗产), 
 
 ### Data Layer ✅
 
-- [ ] `data/sites.json` contains components with coordinates
-- [ ] All components have `componentId`, `wikidataUri`, `latitude`, `longitude`, `name`
+- [x] `data/sites.json` contains components with coordinates
+- [x] All components have `componentId`, `wikidataUri`, `latitude`, `longitude`, `name`
 - [ ] No validation errors in `scripts/validate-components.ts`
 
 ### Database Layer ✅
 
 - [ ] `user_component_visits` table created and accessible
 - [ ] RLS policies work correctly
-- [ ] Old `user_visits` data migrated successfully
+- [ ] Legacy `user_visits` table marked read-only and unused
 - [ ] `user_property_visit_progress` view returns correct data
 
 ### API Layer ✅

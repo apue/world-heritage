@@ -14,7 +14,9 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
-import type { UserSiteStatus, UserStats } from '@/lib/data/types'
+import type { PropertyVisitProgress, UserSiteStatus, UserStats } from '@/lib/data/types'
+import { getComponentCount } from '@/lib/services/components'
+import { buildPropertyComponentId, isSyntheticPropertyComponent } from '@/lib/utils/component-ids'
 
 interface UserSitesContextValue {
   // State
@@ -27,13 +29,37 @@ interface UserSitesContextValue {
   toggleVisited: (siteId: string) => Promise<boolean>
   toggleWishlist: (siteId: string) => Promise<boolean>
   toggleBookmark: (siteId: string) => Promise<boolean>
+  applyVisitProgress: (siteId: string, progress: PropertyVisitProgress) => void
 
   // Utilities
   getSiteStatus: (siteId: string) => UserSiteStatus
   refresh: () => Promise<void>
 }
 
+const DEFAULT_STATUS: UserSiteStatus = { visited: false, wishlist: false, bookmark: false }
+
 export const UserSitesContext = createContext<UserSitesContextValue | null>(null)
+
+function computeProgress(
+  siteId: string,
+  components: Set<string>,
+  hasSyntheticVisit: boolean
+): PropertyVisitProgress {
+  const totalComponents = getComponentCount(siteId)
+  const visitedComponents = components.size
+  const isVisited = hasSyntheticVisit || visitedComponents > 0
+  const progressValue =
+    totalComponents > 0 ? visitedComponents / totalComponents : isVisited ? 1 : 0
+
+  return {
+    siteId,
+    totalComponents,
+    visitedComponents,
+    progress: Math.min(1, progressValue),
+    isVisited,
+    visitedComponentIds: Array.from(components),
+  }
+}
 
 export function UserSitesProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -42,48 +68,139 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createClient()
 
-  /**
-   * Load all user sites in one batch (3 queries total)
-   */
+  const getSiteStatus = useCallback(
+    (siteId: string): UserSiteStatus => {
+      return sitesStatus.get(siteId) || DEFAULT_STATUS
+    },
+    [sitesStatus]
+  )
+
+  const applyVisitProgress = useCallback(
+    (siteId: string, progress: PropertyVisitProgress) => {
+      const previousStatus = getSiteStatus(siteId)
+
+      setSitesStatus((prev) => {
+        const next = new Map(prev)
+        next.set(siteId, {
+          ...previousStatus,
+          visited: progress.isVisited,
+          visitProgress: progress,
+        })
+        return next
+      })
+
+      setStats((prev) => {
+        const delta = progress.isVisited && !previousStatus.visited ? 1 : 0
+        const negativeDelta = !progress.isVisited && previousStatus.visited ? -1 : 0
+        return {
+          ...prev,
+          visited: Math.max(0, prev.visited + delta + negativeDelta),
+        }
+      })
+    },
+    [getSiteStatus]
+  )
+
   const loadAllUserSites = useCallback(
     async (userId: string) => {
       try {
         console.log('[UserSitesContext] Loading all user sites for:', userId)
 
-        // Parallel queries for all 3 tables
-        const [visitedRes, wishlistRes, bookmarkRes] = await Promise.all([
-          supabase.from('user_visits').select('site_id').eq('user_id', userId),
-          supabase.from('user_wishlist').select('site_id').eq('user_id', userId),
-          supabase.from('user_bookmarks').select('site_id').eq('user_id', userId),
+        const [visitsRes, wishlistRes, bookmarkRes] = await Promise.all([
+          supabase
+            .from('user_component_visits')
+            .select('site_id, component_id')
+            .eq('user_id', userId),
+          supabase
+            .from('user_wishlist')
+            .select('site_id, scope_type, scope_id')
+            .eq('user_id', userId),
+          supabase
+            .from('user_bookmarks')
+            .select('site_id, scope_type, scope_id')
+            .eq('user_id', userId),
         ])
 
-        // Build Sets for O(1) lookup
-        const visitedSet = new Set(visitedRes.data?.map((v) => v.site_id) || [])
-        const wishlistSet = new Set(wishlistRes.data?.map((w) => w.site_id) || [])
-        const bookmarkSet = new Set(bookmarkRes.data?.map((b) => b.site_id) || [])
+        if (visitsRes.error) throw visitsRes.error
+        if (wishlistRes.error) throw wishlistRes.error
+        if (bookmarkRes.error) throw bookmarkRes.error
 
-        // Merge all site IDs
-        const allSiteIds = new Set([...visitedSet, ...wishlistSet, ...bookmarkSet])
+        const visitAccumulator = new Map<
+          string,
+          { components: Set<string>; hasSyntheticVisit: boolean }
+        >()
 
-        // Build Map with status for each site
+        for (const row of visitsRes.data || []) {
+          const siteId = row.site_id
+          const componentId = row.component_id
+          const entry = visitAccumulator.get(siteId) || {
+            components: new Set<string>(),
+            hasSyntheticVisit: false,
+          }
+
+          if (isSyntheticPropertyComponent(componentId)) {
+            entry.hasSyntheticVisit = true
+          } else {
+            entry.components.add(componentId)
+          }
+
+          visitAccumulator.set(siteId, entry)
+        }
+
+        const wishlistSet = new Set<string>()
+        for (const row of wishlistRes.data || []) {
+          if (row.scope_type === 'property') {
+            wishlistSet.add(row.scope_id)
+          }
+        }
+
+        const bookmarkSet = new Set<string>()
+        for (const row of bookmarkRes.data || []) {
+          if (row.scope_type === 'property') {
+            bookmarkSet.add(row.scope_id)
+          }
+        }
+
         const statusMap = new Map<string, UserSiteStatus>()
-        allSiteIds.forEach((siteId) => {
+        const visitedSiteIds = new Set<string>()
+        const allSiteIds = new Set<string>([
+          ...visitAccumulator.keys(),
+          ...wishlistSet,
+          ...bookmarkSet,
+        ])
+
+        for (const siteId of allSiteIds) {
+          const accumulator = visitAccumulator.get(siteId) || {
+            components: new Set<string>(),
+            hasSyntheticVisit: false,
+          }
+          const progress = computeProgress(
+            siteId,
+            accumulator.components,
+            accumulator.hasSyntheticVisit
+          )
+
+          if (progress.isVisited) {
+            visitedSiteIds.add(siteId)
+          }
+
           statusMap.set(siteId, {
-            visited: visitedSet.has(siteId),
+            visited: progress.isVisited,
+            visitProgress: progress,
             wishlist: wishlistSet.has(siteId),
             bookmark: bookmarkSet.has(siteId),
           })
-        })
+        }
 
         setSitesStatus(statusMap)
         setStats({
-          visited: visitedSet.size,
+          visited: visitedSiteIds.size,
           wishlist: wishlistSet.size,
           bookmark: bookmarkSet.size,
         })
 
         console.log('[UserSitesContext] Loaded:', {
-          visited: visitedSet.size,
+          visited: visitedSiteIds.size,
           wishlist: wishlistSet.size,
           bookmark: bookmarkSet.size,
         })
@@ -94,9 +211,6 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
     [supabase]
   )
 
-  /**
-   * Initialize: Get user and load their sites
-   */
   useEffect(() => {
     const init = async () => {
       const {
@@ -113,7 +227,6 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
 
     init()
 
-    // Listen for auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -124,7 +237,6 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
       if (newUser) {
         loadAllUserSites(newUser.id)
       } else {
-        // User logged out - clear all state
         setSitesStatus(new Map())
         setStats({ visited: 0, wishlist: 0, bookmark: 0 })
       }
@@ -133,20 +245,6 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [supabase, loadAllUserSites])
 
-  /**
-   * Get status for a single site (O(1) lookup)
-   */
-  const getSiteStatus = useCallback(
-    (siteId: string): UserSiteStatus => {
-      return sitesStatus.get(siteId) || { visited: false, wishlist: false, bookmark: false }
-    },
-    [sitesStatus]
-  )
-
-  /**
-   * Toggle visited status with optimistic update + rollback on error
-   * Auto-removes from wishlist when marking as visited (business rule)
-   */
   const toggleVisited = async (siteId: string): Promise<boolean> => {
     if (!user) {
       console.warn('[UserSitesContext] User not logged in')
@@ -156,50 +254,69 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
     const currentStatus = getSiteStatus(siteId)
     const newValue = !currentStatus.visited
 
-    // Store original state for rollback
     const originalStatus = { ...currentStatus }
     const originalStats = { ...stats }
 
     try {
-      // 1. Optimistic UI update (immediate response)
-      const newStatus: UserSiteStatus = {
+      const optimisticProgress: PropertyVisitProgress | undefined = currentStatus.visitProgress
+        ? {
+            ...currentStatus.visitProgress,
+            isVisited: newValue,
+            progress: newValue
+              ? currentStatus.visitProgress.totalComponents > 0
+                ? Math.min(
+                    1,
+                    currentStatus.visitProgress.visitedComponents /
+                      currentStatus.visitProgress.totalComponents
+                  )
+                : 1
+              : 0,
+          }
+        : undefined
+
+      const optimisticStatus: UserSiteStatus = {
         ...currentStatus,
         visited: newValue,
-        // Business rule: visited + wishlist are mutually exclusive
+        visitProgress: optimisticProgress,
         wishlist: newValue ? false : currentStatus.wishlist,
       }
 
-      setSitesStatus((prev) => new Map(prev).set(siteId, newStatus))
+      setSitesStatus((prev) => new Map(prev).set(siteId, optimisticStatus))
       setStats((prev) => ({
         ...prev,
         visited: prev.visited + (newValue ? 1 : -1),
         wishlist: newValue && currentStatus.wishlist ? prev.wishlist - 1 : prev.wishlist,
       }))
 
-      // 2. Update database
-      if (newValue) {
-        // Add to visited
-        const { error: insertError } = await supabase.from('user_visits').insert({
-          user_id: user.id,
-          site_id: siteId,
-          visit_date: new Date().toISOString().split('T')[0],
-        })
+      const endpoint = '/api/user/visits/components'
+      const requestInit: RequestInit = {
+        method: newValue ? 'POST' : 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(
+          newValue
+            ? { scope: 'property', siteId }
+            : { componentId: buildPropertyComponentId(siteId), siteId }
+        ),
+      }
 
-        if (insertError) throw insertError
+      const response = await fetch(endpoint, requestInit)
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`)
+      }
 
-        // Remove from wishlist (if exists)
-        if (currentStatus.wishlist) {
-          await supabase.from('user_wishlist').delete().eq('user_id', user.id).eq('site_id', siteId)
-        }
-      } else {
-        // Remove from visited
-        const { error: deleteError } = await supabase
-          .from('user_visits')
+      const { progress } = (await response.json()) as { progress: PropertyVisitProgress }
+
+      applyVisitProgress(siteId, progress)
+
+      if (newValue && currentStatus.wishlist) {
+        await supabase
+          .from('user_wishlist')
           .delete()
           .eq('user_id', user.id)
-          .eq('site_id', siteId)
-
-        if (deleteError) throw deleteError
+          .eq('scope_type', 'property')
+          .eq('scope_id', siteId)
       }
 
       console.log('[UserSitesContext] Toggled visited:', siteId, newValue)
@@ -207,19 +324,14 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('[UserSitesContext] Failed to toggle visited:', error)
 
-      // 3. Rollback on error
       setSitesStatus((prev) => new Map(prev).set(siteId, originalStatus))
       setStats(originalStats)
 
-      // 4. Notify user
       alert('Failed to update. Please check your connection and try again.')
       return false
     }
   }
 
-  /**
-   * Toggle wishlist status with optimistic update + rollback on error
-   */
   const toggleWishlist = async (siteId: string): Promise<boolean> => {
     if (!user) {
       console.warn('[UserSitesContext] User not logged in')
@@ -229,12 +341,10 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
     const currentStatus = getSiteStatus(siteId)
     const newValue = !currentStatus.wishlist
 
-    // Store original state for rollback
     const originalStatus = { ...currentStatus }
     const originalStats = { ...stats }
 
     try {
-      // 1. Optimistic UI update
       const newStatus: UserSiteStatus = {
         ...currentStatus,
         wishlist: newValue,
@@ -246,11 +356,12 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
         wishlist: prev.wishlist + (newValue ? 1 : -1),
       }))
 
-      // 2. Update database
       if (newValue) {
         const { error } = await supabase.from('user_wishlist').insert({
           user_id: user.id,
           site_id: siteId,
+          scope_type: 'property',
+          scope_id: siteId,
           priority: 'medium',
         })
 
@@ -260,7 +371,8 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
           .from('user_wishlist')
           .delete()
           .eq('user_id', user.id)
-          .eq('site_id', siteId)
+          .eq('scope_type', 'property')
+          .eq('scope_id', siteId)
 
         if (error) throw error
       }
@@ -270,7 +382,6 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('[UserSitesContext] Failed to toggle wishlist:', error)
 
-      // 3. Rollback on error
       setSitesStatus((prev) => new Map(prev).set(siteId, originalStatus))
       setStats(originalStats)
 
@@ -279,9 +390,6 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  /**
-   * Toggle bookmark status with optimistic update + rollback on error
-   */
   const toggleBookmark = async (siteId: string): Promise<boolean> => {
     if (!user) {
       console.warn('[UserSitesContext] User not logged in')
@@ -291,12 +399,10 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
     const currentStatus = getSiteStatus(siteId)
     const newValue = !currentStatus.bookmark
 
-    // Store original state for rollback
     const originalStatus = { ...currentStatus }
     const originalStats = { ...stats }
 
     try {
-      // 1. Optimistic UI update
       const newStatus: UserSiteStatus = {
         ...currentStatus,
         bookmark: newValue,
@@ -308,11 +414,12 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
         bookmark: prev.bookmark + (newValue ? 1 : -1),
       }))
 
-      // 2. Update database
       if (newValue) {
         const { error } = await supabase.from('user_bookmarks').insert({
           user_id: user.id,
           site_id: siteId,
+          scope_type: 'property',
+          scope_id: siteId,
         })
 
         if (error) throw error
@@ -321,7 +428,8 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
           .from('user_bookmarks')
           .delete()
           .eq('user_id', user.id)
-          .eq('site_id', siteId)
+          .eq('scope_type', 'property')
+          .eq('scope_id', siteId)
 
         if (error) throw error
       }
@@ -331,7 +439,6 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('[UserSitesContext] Failed to toggle bookmark:', error)
 
-      // 3. Rollback on error
       setSitesStatus((prev) => new Map(prev).set(siteId, originalStatus))
       setStats(originalStats)
 
@@ -340,9 +447,6 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  /**
-   * Manually refresh all data
-   */
   const refresh = async () => {
     if (user) {
       await loadAllUserSites(user.id)
@@ -359,6 +463,7 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
         toggleVisited,
         toggleWishlist,
         toggleBookmark,
+        applyVisitProgress,
         getSiteStatus,
         refresh,
       }}
@@ -368,10 +473,6 @@ export function UserSitesProvider({ children }: { children: ReactNode }) {
   )
 }
 
-/**
- * Hook to access user sites context
- * Must be used within UserSitesProvider
- */
 export function useUserSites() {
   const context = useContext(UserSitesContext)
   if (!context) {

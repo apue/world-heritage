@@ -6,14 +6,14 @@
  * Supports custom colored markers based on user site status
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import 'leaflet.markercluster'
-import { HeritageSite } from '@/lib/data/types'
+import { HeritageSite, type PropertyVisitProgress } from '@/lib/data/types'
 import { Locale } from '@/lib/i18n/config'
 import { useUserSites } from '@/lib/contexts/UserSitesContext'
 import { SITE_STATUS_COLORS, getPrimaryStatus } from '@/lib/design/site-status-colors'
@@ -28,20 +28,37 @@ interface HeritageMapProps {
   className?: string
 }
 
-const popupCopy = {
+const popupCopy: Record<
+  Locale,
+  {
+    viewDetails: string
+    componentsLabel: string
+    progressLabel: (visited: number, total: number) => string
+  }
+> = {
   en: {
     viewDetails: 'Details',
+    componentsLabel: 'Components',
+    progressLabel: (visited, total) => `Visited ${visited}/${total}`,
   },
   zh: {
     viewDetails: '详情',
+    componentsLabel: '组成数量',
+    progressLabel: (visited, total) => `已访问 ${visited}/${total}`,
   },
-} satisfies Record<Locale, Record<string, string>>
+}
 
 /**
  * Create custom marker icon based on site status
  */
-function createCustomMarkerIcon(statusType: SiteStatusType): L.DivIcon {
+function createCustomMarkerIcon(
+  statusType: SiteStatusType,
+  options: { componentCount?: number } = {}
+): L.DivIcon {
   const colors = SITE_STATUS_COLORS[statusType]
+  const componentCount = options.componentCount ?? 0
+  const showBadge = componentCount > 0
+  const badgeText = componentCount > 99 ? '99+' : componentCount.toString()
 
   return L.divIcon({
     html: `
@@ -72,6 +89,26 @@ function createCustomMarkerIcon(statusType: SiteStatusType): L.DivIcon {
           font-weight: bold;
           text-shadow: 0 1px 2px rgba(0,0,0,0.3);
         ">${colors.icon}</div>
+        ${
+          showBadge
+            ? `<span style="
+                 position: absolute;
+                 top: -6px;
+                 right: -6px;
+                 min-width: 18px;
+                 height: 18px;
+                 padding: 0 4px;
+                 border-radius: 9999px;
+                 background: #1d4ed8;
+                 color: white;
+                 font-size: 10px;
+                 font-weight: 700;
+                 text-align: center;
+                 line-height: 18px;
+                 box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+               ">${badgeText}</span>`
+            : ''
+        }
       </div>
     `,
     iconSize: [32, 32],
@@ -85,9 +122,15 @@ function createCustomMarkerIcon(statusType: SiteStatusType): L.DivIcon {
  * Create popup HTML with container for React buttons
  * Uses inline styles to ensure compatibility (Tailwind classes in string templates are not compiled)
  */
-function createPopupContent(site: HeritageSite, locale: Locale): string {
+function createPopupContent(
+  site: HeritageSite,
+  locale: Locale,
+  progress?: PropertyVisitProgress
+): string {
   const translation = site.translations[locale] ?? site.translations.en
   const copy = popupCopy[locale]
+  const componentCount = site.componentCount ?? site.components?.length ?? 0
+  const visited = progress?.visitedComponents ?? 0
 
   return `
     <div style="width: 280px;">
@@ -128,6 +171,11 @@ function createPopupContent(site: HeritageSite, locale: Locale): string {
 
         <!-- Action Buttons Container (React will render here) -->
         <div id="popup-actions-${site.id}"></div>
+
+        <div style="margin-top: 0.75rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: #4b5563;">
+          <span>${copy.componentsLabel}: ${componentCount}</span>
+          ${componentCount > 0 ? `<span>${copy.progressLabel(visited, componentCount)}</span>` : ''}
+        </div>
       </div>
     </div>
   `
@@ -151,6 +199,7 @@ export default function HeritageMap({
   const hasFittedRef = useRef<boolean>(false)
   const openSiteIdRef = useRef<string | null>(null)
   const selectionByMarkerRef = useRef<boolean>(false)
+  const { getSiteStatus, sitesStatus } = useUserSites()
 
   // Lightweight FIFO queue for icon updates
   type UpdateTask = { siteId: string }
@@ -159,12 +208,7 @@ export default function HeritageMap({
   // Site update states: Idle | PopupOpen | PendingUpdate
   const siteUpdateStateRef = useRef<Map<string, 'Idle' | 'PopupOpen' | 'PendingUpdate'>>(new Map())
 
-  function enqueueUpdate(siteId: string) {
-    taskQueueRef.current.push({ siteId })
-    processQueue()
-  }
-
-  function processQueue() {
+  const processQueue = useCallback(() => {
     if (processingRef.current) return
     processingRef.current = true
     while (taskQueueRef.current.length > 0) {
@@ -185,18 +229,27 @@ export default function HeritageMap({
       siteUpdateStateRef.current.set(task.siteId, 'Idle')
     }
     processingRef.current = false
-  }
+  }, [getSiteStatus])
 
-  function scheduleUpdateForSite(siteId: string) {
-    const state = siteUpdateStateRef.current.get(siteId) || 'Idle'
-    if (state === 'PopupOpen') {
-      siteUpdateStateRef.current.set(siteId, 'PendingUpdate')
-      return
-    }
-    enqueueUpdate(siteId)
-  }
+  const enqueueUpdate = useCallback(
+    (siteId: string) => {
+      taskQueueRef.current.push({ siteId })
+      processQueue()
+    },
+    [processQueue]
+  )
 
-  const { getSiteStatus, sitesStatus } = useUserSites()
+  const scheduleUpdateForSite = useCallback(
+    (siteId: string) => {
+      const state = siteUpdateStateRef.current.get(siteId) || 'Idle'
+      if (state === 'PopupOpen') {
+        siteUpdateStateRef.current.set(siteId, 'PendingUpdate')
+        return
+      }
+      enqueueUpdate(siteId)
+    },
+    [enqueueUpdate]
+  )
 
   // Initialize map
   useEffect(() => {
@@ -268,14 +321,15 @@ export default function HeritageMap({
         cluster.spiderfy()
       } else if (count >= 5) {
         // 子标记较多时使用 fitBounds 到聚合范围
-        const bounds = typeof cluster.getBounds === 'function'
-          ? cluster.getBounds()
-          : new L.LatLngBounds(
-              (typeof cluster.getAllChildMarkers === 'function'
-                ? cluster.getAllChildMarkers()
-                : []
-              ).map((m: L.Marker) => m.getLatLng())
-            )
+        const bounds =
+          typeof cluster.getBounds === 'function'
+            ? cluster.getBounds()
+            : new L.LatLngBounds(
+                (typeof cluster.getAllChildMarkers === 'function'
+                  ? cluster.getAllChildMarkers()
+                  : []
+                ).map((m: L.Marker) => m.getLatLng())
+              )
         if (bounds && bounds.isValid && bounds.isValid() && mapRef.current) {
           mapRef.current.fitBounds(bounds, { padding: [50, 50] })
         }
@@ -323,15 +377,14 @@ export default function HeritageMap({
 
     // Add markers for each site
     sites.forEach((site) => {
-      // Initial icon uses current status snapshot; later updates handled by a separate effect
       const siteStatus = getSiteStatus(site.id)
       const statusType = getPrimaryStatus(siteStatus)
-      const customIcon = createCustomMarkerIcon(statusType)
+      const componentCount = site.componentCount ?? site.components?.length ?? 0
+      const customIcon = createCustomMarkerIcon(statusType, { componentCount })
 
       const marker = L.marker([site.latitude, site.longitude], { icon: customIcon })
 
-      // Create popup content
-      const popupContent = createPopupContent(site, locale)
+      const popupContent = createPopupContent(site, locale, siteStatus.visitProgress)
 
       marker.bindPopup(popupContent, {
         maxWidth: 300,
@@ -369,7 +422,7 @@ export default function HeritageMap({
         hasFittedRef.current = true
       }
     }
-  }, [sites, locale, onMarkerClick])
+  }, [sites, locale, onMarkerClick, enqueueUpdate, getSiteStatus])
 
   // Update marker icons when user status changes (use queue; defer if popup open)
   useEffect(() => {
@@ -382,7 +435,7 @@ export default function HeritageMap({
         scheduleUpdateForSite(siteId)
       }
     })
-  }, [sitesStatus, getSiteStatus])
+  }, [sitesStatus, getSiteStatus, scheduleUpdateForSite])
 
   // Handle selected site (only programmatic selections should change zoom)
   useEffect(() => {
@@ -404,24 +457,25 @@ export default function HeritageMap({
     }
   }, [selectedSite])
 
-  const portal = portalTarget && openSiteId
-    ? createPortal(
-        <div
-          onClick={(e) => {
-            e.stopPropagation()
-          }}
-          onMouseDown={(e) => {
-            e.stopPropagation()
-          }}
-          onTouchStart={(e) => {
-            e.stopPropagation()
-          }}
-        >
-          <SiteActionButtons siteId={openSiteId} variant="popup" locale={locale} />
-        </div>,
-        portalTarget
-      )
-    : null
+  const portal =
+    portalTarget && openSiteId
+      ? createPortal(
+          <div
+            onClick={(e) => {
+              e.stopPropagation()
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation()
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation()
+            }}
+          >
+            <SiteActionButtons siteId={openSiteId} variant="popup" locale={locale} />
+          </div>,
+          portalTarget
+        )
+      : null
 
   return (
     <>
