@@ -144,13 +144,20 @@ echo "========================================================================"
 echo -e "${GREEN}✨ Data pipeline completed successfully!${NC}"
 echo "========================================================================"
 echo ""
-echo "📄 Output file: data/sites.json"
+echo "📄 Output files:"
+echo "   - data/sites.json (intermediate)"
+echo "   - public/sites.json (frontend bundle)"
 echo ""
 
-# Show file size
+# Show file sizes
 if [ -f "data/sites.json" ]; then
-    SIZE=$(du -h data/sites.json | cut -f1)
-    echo "   File size: $SIZE"
+    SIZE_DATA=$(du -h data/sites.json | cut -f1)
+    echo "   data/sites.json size: $SIZE_DATA"
+fi
+
+if [ -f "public/sites.json" ]; then
+    SIZE_PUBLIC=$(du -h public/sites.json | cut -f1)
+    echo "   public/sites.json size: $SIZE_PUBLIC"
 fi
 
 echo ""

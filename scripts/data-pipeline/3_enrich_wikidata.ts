@@ -316,8 +316,10 @@ async function main() {
     console.log(`   ↳ Syncing public bundle: ${publicSitesPath}`)
     fs.writeFileSync(publicSitesPath, JSON.stringify(sites, null, 2), 'utf-8')
 
-    const fileSize = (fs.statSync(publicSitesPath).size / 1024 / 1024).toFixed(2)
-    console.log(`   ✓ File written: ${fileSize} MB`)
+    const stageFileSize = (fs.statSync(sitesPath).size / 1024 / 1024).toFixed(2)
+    const publicFileSize = (fs.statSync(publicSitesPath).size / 1024 / 1024).toFixed(2)
+    console.log(`   ✓ Stage file size: ${stageFileSize} MB`)
+    console.log(`   ✓ Public file size: ${publicFileSize} MB`)
 
     console.log('\n' + '='.repeat(70))
     console.log('✅ Wikidata enrichment completed successfully!')
