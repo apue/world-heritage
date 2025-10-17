@@ -6,7 +6,7 @@
  * Supports custom colored markers based on user site status
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -171,7 +171,6 @@ function createPopupContent(
 
         <!-- Action Buttons Container (React will render here) -->
         <div id="popup-actions-${site.id}"></div>
-
         <div style="margin-top: 0.75rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: #4b5563;">
           <span>${copy.componentsLabel}: ${componentCount}</span>
           ${componentCount > 0 ? `<span>${copy.progressLabel(visited, componentCount)}</span>` : ''}
@@ -199,37 +198,54 @@ export default function HeritageMap({
   const hasFittedRef = useRef<boolean>(false)
   const openSiteIdRef = useRef<string | null>(null)
   const selectionByMarkerRef = useRef<boolean>(false)
-  const { getSiteStatus, sitesStatus } = useUserSites()
 
   // Lightweight FIFO queue for icon updates
   type UpdateTask = { siteId: string }
   const taskQueueRef = useRef<UpdateTask[]>([])
   const processingRef = useRef<boolean>(false)
-  // Site update states: Idle | PopupOpen | PendingUpdate
-  const siteUpdateStateRef = useRef<Map<string, 'Idle' | 'PopupOpen' | 'PendingUpdate'>>(new Map())
+  const siteLookupRef = useRef<Map<string, HeritageSite>>(new Map())
+
+  const { getSiteStatus, sitesStatus } = useUserSites()
+
+  // Store latest getSiteStatus in ref to break closure trap
+  const getSiteStatusRef = useRef(getSiteStatus)
+  useEffect(() => {
+    getSiteStatusRef.current = getSiteStatus
+  }, [getSiteStatus])
 
   const processQueue = useCallback(() => {
     if (processingRef.current) return
     processingRef.current = true
+
+    const updatedMarkers: L.Marker[] = []
+
     while (taskQueueRef.current.length > 0) {
       const task = taskQueueRef.current.shift()!
       const marker = markerInstancesRef.current.get(task.siteId)
       if (!marker) continue
-      const status = getSiteStatus(task.siteId)
+
+      // Use ref to get latest status (breaks closure trap)
+      const status = getSiteStatusRef.current(task.siteId)
       const newType = getPrimaryStatus(status)
       const oldType = markerPrimaryStatusRef.current.get(task.siteId)
+
       if (newType !== oldType) {
-        marker.setIcon(createCustomMarkerIcon(newType))
+        const siteData = siteLookupRef.current.get(task.siteId)
+        const componentCount = siteData?.componentCount ?? siteData?.components?.length ?? 0
+        marker.setIcon(createCustomMarkerIcon(newType, { componentCount }))
         markerPrimaryStatusRef.current.set(task.siteId, newType)
-        if (markersRef.current) {
-          const m = markersRef.current as unknown as { refreshClusters?: (layer?: L.Layer) => void }
-          m.refreshClusters?.(marker)
-        }
+        updatedMarkers.push(marker)
       }
-      siteUpdateStateRef.current.set(task.siteId, 'Idle')
     }
+
+    // Batch refresh clusters once after all updates
+    if (updatedMarkers.length > 0 && markersRef.current) {
+      const m = markersRef.current as unknown as { refreshClusters?: () => void }
+      m.refreshClusters?.()
+    }
+
     processingRef.current = false
-  }, [getSiteStatus])
+  }, [])
 
   const enqueueUpdate = useCallback(
     (siteId: string) => {
@@ -241,15 +257,17 @@ export default function HeritageMap({
 
   const scheduleUpdateForSite = useCallback(
     (siteId: string) => {
-      const state = siteUpdateStateRef.current.get(siteId) || 'Idle'
-      if (state === 'PopupOpen') {
-        siteUpdateStateRef.current.set(siteId, 'PendingUpdate')
-        return
-      }
+      // Immediate update: let React's reactivity drive the UI
       enqueueUpdate(siteId)
     },
     [enqueueUpdate]
   )
+
+  useEffect(() => {
+    const map = new Map<string, HeritageSite>()
+    sites.forEach((site) => map.set(site.id, site))
+    siteLookupRef.current = map
+  }, [sites])
 
   // Initialize map
   useEffect(() => {
@@ -352,7 +370,6 @@ export default function HeritageMap({
       setTimeout(() => {
         const container = document.getElementById(`popup-actions-${sid}`)
         if (container) setPortalTarget(container)
-        siteUpdateStateRef.current.set(sid, 'PopupOpen')
       }, 0)
     })
 
@@ -363,11 +380,6 @@ export default function HeritageMap({
       if (!src) return
       const sid = markerToSiteIdRef.current.get(src)
       if (!sid) return
-      const state = siteUpdateStateRef.current.get(sid)
-      if (state === 'PendingUpdate') {
-        enqueueUpdate(sid)
-      }
-      siteUpdateStateRef.current.set(sid, 'Idle')
       if (openSiteIdRef.current === sid) {
         openSiteIdRef.current = null
         setOpenSiteId(null)
@@ -377,6 +389,7 @@ export default function HeritageMap({
 
     // Add markers for each site
     sites.forEach((site) => {
+      // Initial icon uses current status snapshot; later updates handled by a separate effect
       const siteStatus = getSiteStatus(site.id)
       const statusType = getPrimaryStatus(siteStatus)
       const componentCount = site.componentCount ?? site.components?.length ?? 0
@@ -384,6 +397,7 @@ export default function HeritageMap({
 
       const marker = L.marker([site.latitude, site.longitude], { icon: customIcon })
 
+      // Create popup content with visit progress when available
       const popupContent = createPopupContent(site, locale, siteStatus.visitProgress)
 
       marker.bindPopup(popupContent, {
@@ -407,7 +421,6 @@ export default function HeritageMap({
       markers.addLayer(marker)
       markerInstancesRef.current.set(site.id, marker)
       markerPrimaryStatusRef.current.set(site.id, statusType)
-      siteUpdateStateRef.current.set(site.id, 'Idle')
     })
 
     mapRef.current.addLayer(markers)
@@ -422,9 +435,10 @@ export default function HeritageMap({
         hasFittedRef.current = true
       }
     }
-  }, [sites, locale, onMarkerClick, enqueueUpdate, getSiteStatus])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sites, locale, onMarkerClick])
 
-  // Update marker icons when user status changes (use queue; defer if popup open)
+  // Update marker icons when user status changes
   useEffect(() => {
     if (!mapRef.current) return
     markerInstancesRef.current.forEach((_, siteId) => {
