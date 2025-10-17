@@ -13,7 +13,7 @@ import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import 'leaflet.markercluster'
-import { HeritageSite, type PropertyVisitProgress } from '@/lib/data/types'
+import { HeritageSite } from '@/lib/data/types'
 import { Locale } from '@/lib/i18n/config'
 import { useUserSites } from '@/lib/contexts/UserSitesContext'
 import { SITE_STATUS_COLORS, getPrimaryStatus } from '@/lib/design/site-status-colors'
@@ -33,18 +33,15 @@ const popupCopy: Record<
   {
     viewDetails: string
     componentsLabel: string
-    progressLabel: (visited: number, total: number) => string
   }
 > = {
   en: {
     viewDetails: 'Details',
     componentsLabel: 'Components',
-    progressLabel: (visited, total) => `Visited ${visited}/${total}`,
   },
   zh: {
     viewDetails: '详情',
     componentsLabel: '组成数量',
-    progressLabel: (visited, total) => `已访问 ${visited}/${total}`,
   },
 }
 
@@ -122,15 +119,10 @@ function createCustomMarkerIcon(
  * Create popup HTML with container for React buttons
  * Uses inline styles to ensure compatibility (Tailwind classes in string templates are not compiled)
  */
-function createPopupContent(
-  site: HeritageSite,
-  locale: Locale,
-  progress?: PropertyVisitProgress
-): string {
+function createPopupContent(site: HeritageSite, locale: Locale): string {
   const translation = site.translations[locale] ?? site.translations.en
   const copy = popupCopy[locale]
   const componentCount = site.componentCount ?? site.components?.length ?? 0
-  const visited = progress?.visitedComponents ?? 0
 
   return `
     <div style="width: 280px;">
@@ -171,10 +163,13 @@ function createPopupContent(
 
         <!-- Action Buttons Container (React will render here) -->
         <div id="popup-actions-${site.id}"></div>
-        <div style="margin-top: 0.75rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: #4b5563;">
-          <span>${copy.componentsLabel}: ${componentCount}</span>
-          ${componentCount > 0 ? `<span>${copy.progressLabel(visited, componentCount)}</span>` : ''}
-        </div>
+        ${
+          componentCount > 0
+            ? `<div style="margin-top: 0.75rem; font-size: 0.75rem; color: #4b5563;">
+                 ${copy.componentsLabel}: ${componentCount}
+               </div>`
+            : ''
+        }
       </div>
     </div>
   `
@@ -397,8 +392,8 @@ export default function HeritageMap({
 
       const marker = L.marker([site.latitude, site.longitude], { icon: customIcon })
 
-      // Create popup content with visit progress when available
-      const popupContent = createPopupContent(site, locale, siteStatus.visitProgress)
+      // Create popup content (lightweight summary)
+      const popupContent = createPopupContent(site, locale)
 
       marker.bindPopup(popupContent, {
         maxWidth: 300,

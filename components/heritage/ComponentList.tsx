@@ -11,6 +11,8 @@ interface ComponentListProps {
   isSignedIn: boolean
   isLoading: boolean
   onToggle: (componentId: string, shouldVisit: boolean) => Promise<boolean>
+  onSelectComponent?: (componentId: string) => void
+  selectedComponentId?: string | null
 }
 
 const labels: Record<
@@ -55,6 +57,8 @@ export default function ComponentList({
   isSignedIn,
   isLoading,
   onToggle,
+  onSelectComponent,
+  selectedComponentId,
 }: ComponentListProps) {
   const copy = labels[locale]
   const [pendingId, setPendingId] = useState<string | null>(null)
@@ -97,7 +101,21 @@ export default function ComponentList({
             return (
               <li
                 key={component.componentId}
-                className="flex items-center justify-between gap-4 rounded-lg border border-gray-100 p-3 transition hover:border-blue-200"
+                className={`flex items-center justify-between gap-4 rounded-lg border p-3 transition ${
+                  selectedComponentId === component.componentId
+                    ? 'border-blue-400 bg-blue-50'
+                    : 'border-gray-100 hover:border-blue-200'
+                }`}
+                onClick={() => onSelectComponent?.(component.componentId)}
+                role={onSelectComponent ? 'button' : undefined}
+                tabIndex={onSelectComponent ? 0 : -1}
+                onKeyDown={(event) => {
+                  if (!onSelectComponent) return
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    onSelectComponent(component.componentId)
+                  }
+                }}
               >
                 <div>
                   <p className="text-sm font-medium text-gray-900">{label}</p>
@@ -114,7 +132,8 @@ export default function ComponentList({
 
                 <button
                   type="button"
-                  onClick={async () => {
+                  onClick={async (event) => {
+                    event.stopPropagation()
                     if (!isSignedIn || isPending) return
                     setPendingId(component.componentId)
                     const success = await onToggle(component.componentId, !isVisited)
