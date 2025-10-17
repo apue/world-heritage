@@ -8,7 +8,7 @@ import {
   isSyntheticPropertyComponent as isSynthetic,
 } from '@/lib/utils/component-ids'
 
-type PublicSupabaseClient = SupabaseClient<unknown, unknown, unknown>
+type PublicSupabaseClient = SupabaseClient
 
 export async function getUserComponentVisits(
   supabase: PublicSupabaseClient,
