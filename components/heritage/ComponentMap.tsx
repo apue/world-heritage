@@ -1,12 +1,17 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef } from 'react'
-import L from 'leaflet'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
-import 'leaflet.markercluster'
 import type { ComponentSite } from '@/lib/data/types'
+import type {
+  Map as LeafletMap,
+  Marker as LeafletMarker,
+  MarkerClusterGroup as LeafletMarkerClusterGroup,
+  MarkerClusterGroupOptions,
+  DivIcon,
+} from 'leaflet'
 
 interface ComponentMapProps {
   components: ComponentSite[]
@@ -20,17 +25,20 @@ const VISITED_COLOR = '#10b981'
 const DEFAULT_COLOR = '#2563eb'
 const SELECTED_BORDER = '#f59e0b'
 
-function createComponentIcon({
-  visited,
-  selected,
-}: {
-  visited: boolean
-  selected: boolean
-}): L.DivIcon {
+function createComponentIcon(
+  leaflet: typeof import('leaflet'),
+  {
+    visited,
+    selected,
+  }: {
+    visited: boolean
+    selected: boolean
+  }
+): DivIcon {
   const baseColor = visited ? VISITED_COLOR : DEFAULT_COLOR
   const borderColor = selected ? SELECTED_BORDER : 'white'
 
-  return L.divIcon({
+  return leaflet.divIcon({
     html: `
       <div style="
         width: 18px;
@@ -56,9 +64,11 @@ export default function ComponentMap({
   className = '',
 }: ComponentMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const mapRef = useRef<L.Map | null>(null)
-  const clusterRef = useRef<L.MarkerClusterGroup | null>(null)
-  const markersRef = useRef<Map<string, L.Marker>>(new Map())
+  const mapRef = useRef<LeafletMap | null>(null)
+  const clusterRef = useRef<LeafletMarkerClusterGroup | null>(null)
+  const markersRef = useRef<Map<string, LeafletMarker>>(new Map())
+  const leafletRef = useRef<typeof import('leaflet') | null>(null)
+  const [mapReady, setMapReady] = useState(false)
 
   const visitedSet = useMemo(() => new Set(visitedComponentIds), [visitedComponentIds])
 
@@ -66,14 +76,31 @@ export default function ComponentMap({
     markersRef.current = new Map()
   }, [])
 
+  const ensureLeaflet = useCallback(async () => {
+    if (!leafletRef.current) {
+      const { default: L } = await import('leaflet')
+      if (typeof window !== 'undefined') {
+        ;(window as typeof window & { L?: typeof L }).L = L
+      }
+      await import('leaflet.markercluster')
+      leafletRef.current = L
+    }
+    return leafletRef.current!
+  }, [])
+
   const buildMarkers = useCallback(() => {
-    if (!mapRef.current) return
+    const L = leafletRef.current
+    if (!mapRef.current || !L) return
 
     if (clusterRef.current) {
       mapRef.current.removeLayer(clusterRef.current)
     }
 
-    const cluster = L.markerClusterGroup({
+    type LeafletWithCluster = typeof import('leaflet') & {
+      markerClusterGroup: (options?: MarkerClusterGroupOptions) => LeafletMarkerClusterGroup
+    }
+    const leafletWithCluster = L as LeafletWithCluster
+    const cluster = leafletWithCluster.markerClusterGroup({
       chunkedLoading: true,
       maxClusterRadius: 60,
       spiderfyOnMaxZoom: true,
@@ -88,7 +115,7 @@ export default function ComponentMap({
 
       const isVisited = visitedSet.has(component.componentId)
       const isSelected = selectedComponentId === component.componentId
-      const icon = createComponentIcon({ visited: isVisited, selected: isSelected })
+      const icon = createComponentIcon(L, { visited: isVisited, selected: isSelected })
 
       const marker = L.marker([lat, lon], { icon })
       marker.bindPopup(
@@ -119,29 +146,47 @@ export default function ComponentMap({
   }, [components, visitedSet, selectedComponentId, onSelectComponent])
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return
+    let cancelled = false
+    const init = async () => {
+      const L = await ensureLeaflet()
+      if (cancelled || !containerRef.current || mapRef.current) return
 
-    const map = L.map(containerRef.current, {
-      center: [20, 0],
-      zoom: 3,
-      minZoom: 2,
-      maxZoom: 18,
-      scrollWheelZoom: true,
+      const map = L.map(containerRef.current, {
+        center: [20, 0],
+        zoom: 3,
+        minZoom: 2,
+        maxZoom: 18,
+        scrollWheelZoom: true,
+      })
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19,
+      }).addTo(map)
+
+      mapRef.current = map
+      setMapReady(true)
+    }
+
+    init().catch((error) => {
+      console.error('[ComponentMap] Failed to initialise map', error)
     })
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 19,
-    }).addTo(map)
-
-    mapRef.current = map
-  }, [])
+    return () => {
+      cancelled = true
+      clusterRef.current?.remove()
+      mapRef.current?.remove()
+      mapRef.current = null
+      resetMarkers()
+      setMapReady(false)
+    }
+  }, [ensureLeaflet, resetMarkers])
 
   useEffect(() => {
-    if (!mapRef.current) return
+    if (!mapReady) return
     resetMarkers()
     buildMarkers()
-  }, [buildMarkers, resetMarkers])
+  }, [mapReady, buildMarkers, resetMarkers])
 
   useEffect(() => {
     if (!mapRef.current || !selectedComponentId) return
@@ -152,15 +197,6 @@ export default function ComponentMap({
       marker.openPopup()
     }
   }, [selectedComponentId])
-
-  useEffect(() => {
-    return () => {
-      clusterRef.current?.remove()
-      mapRef.current?.remove()
-      mapRef.current = null
-      resetMarkers()
-    }
-  }, [resetMarkers])
 
   return <div ref={containerRef} className={`h-80 w-full rounded-lg ${className}`} />
 }
