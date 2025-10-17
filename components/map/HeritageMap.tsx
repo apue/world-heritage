@@ -198,6 +198,7 @@ export default function HeritageMap({
   type UpdateTask = { siteId: string }
   const taskQueueRef = useRef<UpdateTask[]>([])
   const processingRef = useRef<boolean>(false)
+
   const siteLookupRef = useRef<Map<string, HeritageSite>>(new Map())
 
   const { getSiteStatus, sitesStatus } = useUserSites()
@@ -263,6 +264,7 @@ export default function HeritageMap({
     sites.forEach((site) => map.set(site.id, site))
     siteLookupRef.current = map
   }, [sites])
+
 
   // Initialize map
   useEffect(() => {
