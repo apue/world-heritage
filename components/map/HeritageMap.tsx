@@ -65,13 +65,9 @@ type PopupEventWithSource = PopupEvent & {
 
 function createCustomMarkerIcon(
   leaflet: typeof import('leaflet'),
-  statusType: SiteStatusType,
-  options: { componentCount?: number } = {}
+  statusType: SiteStatusType
 ): DivIcon {
   const colors = SITE_STATUS_COLORS[statusType]
-  const componentCount = options.componentCount ?? 0
-  const showBadge = componentCount > 0
-  const badgeText = componentCount > 99 ? '99+' : componentCount.toString()
 
   return leaflet.divIcon({
     html: `
@@ -90,38 +86,18 @@ function createCustomMarkerIcon(
           border: 3px solid white;
           box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         "></div>
-        <div style="
-          position: absolute;
-          width: 28px;
-          height: 28px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-size: 14px;
-          font-weight: bold;
-          text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-        ">${colors.icon}</div>
-        ${
-          showBadge
-            ? `<span style="
-                 position: absolute;
-                 top: -6px;
-                 right: -6px;
-                 min-width: 18px;
-                 height: 18px;
-                 padding: 0 4px;
-                 border-radius: 9999px;
-                 background: #1d4ed8;
-                 color: white;
-                 font-size: 10px;
-                 font-weight: 700;
-                 text-align: center;
-                 line-height: 18px;
-                 box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-               ">${badgeText}</span>`
-            : ''
-        }
+       <div style="
+         position: absolute;
+         width: 28px;
+         height: 28px;
+         display: flex;
+         align-items: center;
+         justify-content: center;
+         color: white;
+         font-size: 14px;
+         font-weight: bold;
+         text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+       ">${colors.icon}</div>
       </div>
     `,
     iconSize: [32, 32],
@@ -243,9 +219,7 @@ export default function HeritageMap({
       const oldType = markerPrimaryStatusRef.current.get(task.siteId)
 
       if (newType !== oldType) {
-        const siteData = siteLookupRef.current.get(task.siteId)
-        const componentCount = siteData?.componentCount ?? siteData?.components?.length ?? 0
-        marker.setIcon(createCustomMarkerIcon(L, newType, { componentCount }))
+        marker.setIcon(createCustomMarkerIcon(L, newType))
         markerPrimaryStatusRef.current.set(task.siteId, newType)
         updatedMarkers.push(marker)
       }
@@ -418,8 +392,7 @@ export default function HeritageMap({
     sites.forEach((site) => {
       const siteStatus = getSiteStatus(site.id)
       const statusType = getPrimaryStatus(siteStatus)
-      const componentCount = site.componentCount ?? site.components?.length ?? 0
-      const customIcon = createCustomMarkerIcon(L, statusType, { componentCount })
+      const customIcon = createCustomMarkerIcon(L, statusType)
 
       const marker = L.marker([site.latitude, site.longitude], { icon: customIcon })
       const popupContent = createPopupContent(site, locale)
