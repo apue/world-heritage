@@ -208,12 +208,20 @@ Implement component-level tracking for UNESCO serial properties (串联遗产), 
   - [x] Handle client-side interactions
 - [ ] **Estimated time**: 1.5 hours
 
-#### 4.5 Update Explore Page (Map Markers)
+#### 4.5 Refine Explore Page (Property Overview)
 
-- [x] Update map markers to show component count badge
-- [x] Update popup to show visit progress
-- [ ] (Optional) Add toggle to show/hide component markers
+- [ ] Keep Explore map marker set at property level (no component scatter by default)
+- [ ] Ensure property marker state reflects component visits via aggregation
+- [ ] Display lightweight summary in popup（如“共有 X 个组成地”）
+- [ ] (Optional) provide deep-link按钮，引导至详情页的组件列表
 - [ ] **Estimated time**: 1.5 hours
+
+#### 4.6 Enhance Detail Page Component Map
+
+- [ ] Add dedicated component map/mini-map with clustering适配高密度点位
+- [ ] Sync component marker interactions with列表状态（标记已访、收藏等）
+- [ ] Provide zoom/筛选手段（按区域或分页）以便管理超大串联遗产
+- [ ] **Estimated time**: 2 hours
 
 **Phase 4 Total**: ~7 hours
 
@@ -237,8 +245,10 @@ Implement component-level tracking for UNESCO serial properties (串联遗产), 
 - [ ] Test component list display
 - [ ] Test marking component as visited (logged in)
 - [ ] Test visit progress calculation
+- [ ] Validate Explore 地图仅渲染 property marker 并正确反映访问状态
+- [ ] Validate 详情页组件地图在密集串联遗产下的交互（聚类/缩放/列表同步）
 - [ ] Test on mobile devices
-- [ ] Test with different sites (0 components, 1 component, 50+ components)
+- [ ] Test with不同规模的遗产（0 组件、1 组件、50+ 组件、>100 组件）
 - [ ] **Estimated time**: 2 hours
 
 #### 5.3 Update Documentation
@@ -312,6 +322,8 @@ Implement component-level tracking for UNESCO serial properties (串联遗产), 
 - [ ] Visit progress bar shows accurate percentage
 - [ ] "Mark as Visited" button works
 - [ ] Visited components show checkmark
+- [ ] Explore 地图保持 property 级 marker，状态与组件访问同步
+- [ ] 详情页组件地图/列表可用（含聚类或分页策略）
 - [ ] Responsive on mobile devices
 - [ ] Loading states implemented
 
