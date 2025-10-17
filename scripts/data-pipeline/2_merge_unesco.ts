@@ -70,13 +70,23 @@ interface WDPAComponent {
 }
 
 // Component site in our data model
+// Note: This structure will be enriched by Stage 3 (Wikidata) with coordinates
 interface ComponentSite {
-  componentId: string
-  parentId: string
+  componentId: string // Wikidata QID (set by Stage 3) or WDPA PID
+  wikidataUri?: string // Full Wikidata URI (set by Stage 3)
+  parentId: string // UNESCO whs_id
+
+  // Geographic information (required, set by Stage 3)
+  latitude?: number // Optional here, required after Stage 3
+  longitude?: number // Optional here, required after Stage 3
+  country?: string // ISO country code
+
+  // Multi-language names
   name: Record<Language, string>
+
+  // Metadata (from WDPA)
   area?: number
   designation?: string
-  // Note: latitude/longitude would come from shapefile (not implemented yet)
 }
 
 // Final processed site structure

@@ -1,0 +1,20 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Determine files changed compared to upstream default (main).
+CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
+
+should_run_build() {
+  echo "$CHANGED_FILES" | grep -E '^(app/|components/|lib/|public/)' >/dev/null 2>&1
+}
+
+if should_run_build; then
+  echo "Detected frontend-related changes; running npm run type-check..."
+  if ! npm run type-check; then
+    echo "type-check failed; aborting push." >&2
+    exit 1
+  fi
+else
+  echo "No frontend changes detected; skipping type-check."
+fi
+

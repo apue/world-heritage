@@ -17,6 +17,7 @@
     "prepare:data:full": "bash scripts/data-pipeline/run-all.sh",
     "prepare:wdpa": "uv run python scripts/data-pipeline/1_extract_wdpa.py",
     "prepare:merge": "tsx scripts/data-pipeline/2_merge_unesco.ts",
+    "prepare:wikidata": "tsx scripts/data-pipeline/3_enrich_wikidata.ts",
     "prepare": "husky"
   },
   "dependencies": {

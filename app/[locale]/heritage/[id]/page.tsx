@@ -9,6 +9,7 @@ import type { LocalizedPageProps } from '@/lib/i18n/types'
 import ShareActions from '@/components/heritage/ShareActions'
 import SiteMiniMap from '@/components/map/SiteMiniMap'
 import SiteActionButtons from '@/components/heritage/SiteActionButtons'
+import ComponentVisitsPanel from '@/components/heritage/ComponentVisitsPanel'
 
 const localeCopy = {
   en: {
@@ -145,6 +146,10 @@ export default async function HeritageDetailPage({ params }: LocalizedPageProps<
               <h2 className="text-xl font-semibold text-gray-900">{copy.overview}</h2>
               <p className="mt-3 text-gray-700 leading-relaxed">{translation.description}</p>
             </section>
+
+            {site.hasComponents && site.components && site.components.length > 0 && (
+              <ComponentVisitsPanel siteId={site.id} components={site.components} locale={locale} />
+            )}
 
             <section>
               <h2 className="text-xl font-semibold text-gray-900">{copy.quickFacts}</h2>

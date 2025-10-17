@@ -6,13 +6,22 @@
  * Supports custom colored markers based on user site status
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
-import 'leaflet.markercluster'
+import type {
+  Map as LeafletMap,
+  Marker as LeafletMarker,
+  MarkerCluster as LeafletMarkerCluster,
+  MarkerClusterGroup as LeafletMarkerClusterGroup,
+  MarkerClusterGroupOptions,
+  DivIcon,
+  LeafletEvent,
+  LatLngBounds,
+  PopupEvent,
+} from 'leaflet'
 import { HeritageSite } from '@/lib/data/types'
 import { Locale } from '@/lib/i18n/config'
 import { useUserSites } from '@/lib/contexts/UserSitesContext'
@@ -28,22 +37,39 @@ interface HeritageMapProps {
   className?: string
 }
 
-const popupCopy = {
+const popupCopy: Record<
+  Locale,
+  {
+    viewDetails: string
+    componentsLabel: string
+  }
+> = {
   en: {
     viewDetails: 'Details',
+    componentsLabel: 'Components',
   },
   zh: {
     viewDetails: '详情',
+    componentsLabel: '组成数量',
   },
-} satisfies Record<Locale, Record<string, string>>
+}
 
-/**
- * Create custom marker icon based on site status
- */
-function createCustomMarkerIcon(statusType: SiteStatusType): L.DivIcon {
+type ClusterClickEvent = LeafletEvent & {
+  layer?: LeafletMarkerCluster
+  originalEvent?: MouseEvent
+}
+
+type PopupEventWithSource = PopupEvent & {
+  popup: PopupEvent['popup'] & { _source?: LeafletMarker }
+}
+
+function createCustomMarkerIcon(
+  leaflet: typeof import('leaflet'),
+  statusType: SiteStatusType
+): DivIcon {
   const colors = SITE_STATUS_COLORS[statusType]
 
-  return L.divIcon({
+  return leaflet.divIcon({
     html: `
       <div style="
         position: relative;
@@ -60,18 +86,18 @@ function createCustomMarkerIcon(statusType: SiteStatusType): L.DivIcon {
           border: 3px solid white;
           box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         "></div>
-        <div style="
-          position: absolute;
-          width: 28px;
-          height: 28px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-size: 14px;
-          font-weight: bold;
-          text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-        ">${colors.icon}</div>
+       <div style="
+         position: absolute;
+         width: 28px;
+         height: 28px;
+         display: flex;
+         align-items: center;
+         justify-content: center;
+         color: white;
+         font-size: 14px;
+         font-weight: bold;
+         text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+       ">${colors.icon}</div>
       </div>
     `,
     iconSize: [32, 32],
@@ -81,17 +107,13 @@ function createCustomMarkerIcon(statusType: SiteStatusType): L.DivIcon {
   })
 }
 
-/**
- * Create popup HTML with container for React buttons
- * Uses inline styles to ensure compatibility (Tailwind classes in string templates are not compiled)
- */
 function createPopupContent(site: HeritageSite, locale: Locale): string {
   const translation = site.translations[locale] ?? site.translations.en
   const copy = popupCopy[locale]
+  const componentCount = site.componentCount ?? site.components?.length ?? 0
 
   return `
     <div style="width: 280px;">
-      <!-- Hero Image (full width, no padding) -->
       <div style="position: relative; height: 112px; width: 100%; overflow: hidden;">
         <img
           src="${site.imageUrl}"
@@ -101,14 +123,11 @@ function createPopupContent(site: HeritageSite, locale: Locale): string {
         />
       </div>
 
-      <!-- Content with padding -->
       <div style="padding: 0.75rem;">
-        <!-- Site Name -->
         <h3 style="margin-bottom: 0.5rem; font-size: 0.875rem; font-weight: 700; line-height: 1.25;">
           ${translation.name}
         </h3>
 
-        <!-- Category + View Details (same row) -->
         <div style="margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
           <span style="display: inline-block; border-radius: 0.25rem; background-color: #dbeafe; padding: 0.125rem 0.5rem; font-size: 0.75rem; color: #1e40af;">
             ${site.category}
@@ -126,8 +145,14 @@ function createPopupContent(site: HeritageSite, locale: Locale): string {
           </a>
         </div>
 
-        <!-- Action Buttons Container (React will render here) -->
         <div id="popup-actions-${site.id}"></div>
+        ${
+          componentCount > 0
+            ? `<div style="margin-top: 0.75rem; font-size: 0.75rem; color: #4b5563;">
+                 ${copy.componentsLabel}: ${componentCount}
+               </div>`
+            : ''
+        }
       </div>
     </div>
   `
@@ -140,10 +165,10 @@ export default function HeritageMap({
   onMarkerClick,
   className = '',
 }: HeritageMapProps) {
-  const mapRef = useRef<L.Map | null>(null)
-  const markersRef = useRef<L.MarkerClusterGroup | null>(null)
-  const markerInstancesRef = useRef<Map<string, L.Marker>>(new Map())
-  const markerToSiteIdRef = useRef<Map<L.Marker, string>>(new Map())
+  const mapRef = useRef<LeafletMap | null>(null)
+  const markersRef = useRef<LeafletMarkerClusterGroup | null>(null)
+  const markerInstancesRef = useRef<Map<string, LeafletMarker>>(new Map())
+  const markerToSiteIdRef = useRef<Map<LeafletMarker, string>>(new Map())
   const markerPrimaryStatusRef = useRef<Map<string, SiteStatusType>>(new Map())
   const containerRef = useRef<HTMLDivElement>(null)
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
@@ -151,47 +176,58 @@ export default function HeritageMap({
   const hasFittedRef = useRef<boolean>(false)
   const openSiteIdRef = useRef<string | null>(null)
   const selectionByMarkerRef = useRef<boolean>(false)
+  const leafletRef = useRef<typeof import('leaflet') | null>(null)
+  const [mapReady, setMapReady] = useState(false)
 
-  // Lightweight FIFO queue for icon updates
   type UpdateTask = { siteId: string }
   const taskQueueRef = useRef<UpdateTask[]>([])
   const processingRef = useRef<boolean>(false)
+  const siteLookupRef = useRef<Map<string, HeritageSite>>(new Map())
 
   const { getSiteStatus, sitesStatus } = useUserSites()
-
-  // Store latest getSiteStatus in ref to break closure trap
   const getSiteStatusRef = useRef(getSiteStatus)
   useEffect(() => {
     getSiteStatusRef.current = getSiteStatus
   }, [getSiteStatus])
 
+  const ensureLeaflet = useCallback(async () => {
+    if (!leafletRef.current) {
+      const { default: L } = await import('leaflet')
+      if (typeof window !== 'undefined') {
+        ;(window as typeof window & { L?: typeof L }).L = L
+      }
+      await import('leaflet.markercluster')
+      leafletRef.current = L
+    }
+    return leafletRef.current!
+  }, [])
+
   const processQueue = useCallback(() => {
-    if (processingRef.current) return
+    const L = leafletRef.current
+    if (!L || processingRef.current) return
     processingRef.current = true
 
-    const updatedMarkers: L.Marker[] = []
+    const updatedMarkers: LeafletMarker[] = []
 
     while (taskQueueRef.current.length > 0) {
       const task = taskQueueRef.current.shift()!
       const marker = markerInstancesRef.current.get(task.siteId)
       if (!marker) continue
 
-      // Use ref to get latest status (breaks closure trap)
       const status = getSiteStatusRef.current(task.siteId)
       const newType = getPrimaryStatus(status)
       const oldType = markerPrimaryStatusRef.current.get(task.siteId)
 
       if (newType !== oldType) {
-        marker.setIcon(createCustomMarkerIcon(newType))
+        marker.setIcon(createCustomMarkerIcon(L, newType))
         markerPrimaryStatusRef.current.set(task.siteId, newType)
         updatedMarkers.push(marker)
       }
     }
 
-    // Batch refresh clusters once after all updates
     if (updatedMarkers.length > 0 && markersRef.current) {
-      const m = markersRef.current as unknown as { refreshClusters?: () => void }
-      m.refreshClusters?.()
+      type RefreshableCluster = LeafletMarkerClusterGroup & { refreshClusters?: () => void }
+      ;(markersRef.current as RefreshableCluster).refreshClusters?.()
     }
 
     processingRef.current = false
@@ -207,46 +243,76 @@ export default function HeritageMap({
 
   const scheduleUpdateForSite = useCallback(
     (siteId: string) => {
-      // Immediate update: let React's reactivity drive the UI
       enqueueUpdate(siteId)
     },
     [enqueueUpdate]
   )
 
-  // Initialize map
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return
+    const map = new Map<string, HeritageSite>()
+    sites.forEach((site) => map.set(site.id, site))
+    siteLookupRef.current = map
+  }, [sites])
 
-    // Create map
-    const map = L.map(containerRef.current, {
-      center: [20, 0],
-      zoom: 2,
-      minZoom: 2,
-      maxZoom: 18,
-      zoomControl: true,
+  useEffect(() => {
+    let cancelled = false
+
+    const init = async () => {
+      const L = await ensureLeaflet()
+      if (cancelled || mapRef.current || !containerRef.current) return
+
+      const map = L.map(containerRef.current, {
+        center: [20, 0],
+        zoom: 2,
+        minZoom: 2,
+        maxZoom: 18,
+        zoomControl: true,
+      })
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19,
+      }).addTo(map)
+
+      mapRef.current = map
+      setMapReady(true)
+    }
+
+    init().catch((error) => {
+      console.error('[HeritageMap] Failed to initialise map', error)
     })
 
-    // Add tile layer (OpenStreetMap)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 19,
-    }).addTo(map)
-
-    mapRef.current = map
+    const clusterStore = markersRef
+    const markerMapStore = markerInstancesRef
+    const markerSiteStore = markerToSiteIdRef
+    const markerStatusStore = markerPrimaryStatusRef
+    const mapStore = mapRef
 
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove()
-        mapRef.current = null
+      cancelled = true
+      const clusterSnapshot = clusterStore.current
+      const mapSnapshot = mapStore.current
+
+      if (mapSnapshot && clusterSnapshot) {
+        mapSnapshot.removeLayer(clusterSnapshot)
       }
+      clusterSnapshot?.remove()
+      clusterStore.current = null
+
+      markerMapStore.current.clear()
+      markerSiteStore.current.clear()
+      markerStatusStore.current.clear()
+
+      mapSnapshot?.remove()
+      mapStore.current = null
+      setMapReady(false)
     }
-  }, [])
+  }, [ensureLeaflet])
 
-  // Rebuild markers when sites or locale change (NOT on status change)
   useEffect(() => {
-    if (!mapRef.current) return
+    const L = leafletRef.current
+    if (!mapReady || !mapRef.current || !L) return
 
-    // Remove existing markers
     if (markersRef.current) {
       mapRef.current.removeLayer(markersRef.current)
     }
@@ -255,57 +321,51 @@ export default function HeritageMap({
     setPortalTarget(null)
     setOpenSiteId(null)
 
-    // Create marker cluster group
-    const markers = L.markerClusterGroup({
+    type LeafletWithCluster = typeof import('leaflet') & {
+      markerClusterGroup: (options?: MarkerClusterGroupOptions) => LeafletMarkerClusterGroup
+    }
+    const leafletWithCluster = L as LeafletWithCluster
+    const markers = leafletWithCluster.markerClusterGroup({
       chunkedLoading: true,
       spiderfyOnMaxZoom: true,
       showCoverageOnHover: false,
       zoomToBoundsOnClick: false,
     })
 
-    // Custom cluster click behavior:
-    // - If cluster has >1 markers: spiderfy (no zoom change)
-    // - If cluster has exactly 1 marker: open its popup (no zoom change)
-    markers.on('clusterclick', (e: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const evt = e as any
-      const cluster = evt?.layer
+    markers.on('clusterclick', (event: ClusterClickEvent) => {
+      const cluster = event.layer as LeafletMarkerCluster | undefined
       if (!cluster || typeof cluster.getChildCount !== 'function') return
+
       const count = cluster.getChildCount()
       if (count === 1 && typeof cluster.getAllChildMarkers === 'function') {
-        const children = cluster.getAllChildMarkers()
-        const marker = children?.[0]
+        const childMarkers = cluster.getAllChildMarkers() as LeafletMarker[]
+        const marker = childMarkers?.[0]
         if (marker && typeof marker.openPopup === 'function') {
           marker.openPopup()
         }
       } else if (count > 1 && count < 5 && typeof cluster.spiderfy === 'function') {
-        // 少量子标记时使用蜘蛛化展开（不改变缩放）
         cluster.spiderfy()
       } else if (count >= 5) {
-        // 子标记较多时使用 fitBounds 到聚合范围
-        const bounds =
-          typeof cluster.getBounds === 'function'
-            ? cluster.getBounds()
-            : new L.LatLngBounds(
-                (typeof cluster.getAllChildMarkers === 'function'
-                  ? cluster.getAllChildMarkers()
-                  : []
-                ).map((m: L.Marker) => m.getLatLng())
-              )
-        if (bounds && bounds.isValid && bounds.isValid() && mapRef.current) {
-          mapRef.current.fitBounds(bounds, { padding: [50, 50] })
+        const childMarkers =
+          typeof cluster.getAllChildMarkers === 'function'
+            ? (cluster.getAllChildMarkers() as LeafletMarker[])
+            : []
+        if (childMarkers.length > 0 && mapRef.current) {
+          const bounds = L.latLngBounds(childMarkers.map((marker) => marker.getLatLng()))
+          if (bounds.isValid()) {
+            mapRef.current.fitBounds(bounds, { padding: [50, 50] })
+          }
         }
       }
-      const oe = evt?.originalEvent
-      oe?.preventDefault?.()
-      oe?.stopPropagation?.()
+      event.originalEvent?.preventDefault?.()
+      event.originalEvent?.stopPropagation?.()
     })
 
-    // Map-level popup lifecycle listeners (derive siteId from popup source)
-    mapRef.current.on('popupopen', (e: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const evt = e as any
-      const src: L.Marker | undefined = evt?.popup?._source
+    mapRef.current.off('popupopen')
+    mapRef.current.off('popupclose')
+
+    mapRef.current.on('popupopen', (event: PopupEventWithSource) => {
+      const src = event.popup?._source
       if (!src) return
       const sid = markerToSiteIdRef.current.get(src)
       if (!sid) return
@@ -317,10 +377,8 @@ export default function HeritageMap({
       }, 0)
     })
 
-    mapRef.current.on('popupclose', (e: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const evt = e as any
-      const src: L.Marker | undefined = evt?.popup?._source
+    mapRef.current.on('popupclose', (event: PopupEventWithSource) => {
+      const src = event.popup?._source
       if (!src) return
       const sid = markerToSiteIdRef.current.get(src)
       if (!sid) return
@@ -331,16 +389,12 @@ export default function HeritageMap({
       }
     })
 
-    // Add markers for each site
     sites.forEach((site) => {
-      // Initial icon uses current status snapshot; later updates handled by a separate effect
       const siteStatus = getSiteStatus(site.id)
       const statusType = getPrimaryStatus(siteStatus)
-      const customIcon = createCustomMarkerIcon(statusType)
+      const customIcon = createCustomMarkerIcon(L, statusType)
 
       const marker = L.marker([site.latitude, site.longitude], { icon: customIcon })
-
-      // Create popup content
       const popupContent = createPopupContent(site, locale)
 
       marker.bindPopup(popupContent, {
@@ -350,10 +404,8 @@ export default function HeritageMap({
         closeButton: true,
       })
 
-      // Track marker ↔ siteId mapping
       markerToSiteIdRef.current.set(marker, site.id)
 
-      // Handle marker click
       if (onMarkerClick) {
         marker.on('click', () => {
           selectionByMarkerRef.current = true
@@ -369,21 +421,17 @@ export default function HeritageMap({
     mapRef.current.addLayer(markers)
     markersRef.current = markers
 
-    // Fit bounds if there are sites
     if (sites.length > 0) {
-      const bounds = markers.getBounds()
+      const bounds = markers.getBounds() as LatLngBounds
       if (bounds.isValid()) {
-        // Only fit on rebuild; do not run on status updates (this effect doesn't run on status)
         mapRef.current.fitBounds(bounds, { padding: [50, 50] })
         hasFittedRef.current = true
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sites, locale, onMarkerClick])
+  }, [mapReady, sites, locale, onMarkerClick, enqueueUpdate, getSiteStatus])
 
-  // Update marker icons when user status changes
   useEffect(() => {
-    if (!mapRef.current) return
+    if (!mapRef.current || !leafletRef.current) return
     markerInstancesRef.current.forEach((_, siteId) => {
       const status = getSiteStatus(siteId)
       const newType = getPrimaryStatus(status)
@@ -394,20 +442,16 @@ export default function HeritageMap({
     })
   }, [sitesStatus, getSiteStatus, scheduleUpdateForSite])
 
-  // Handle selected site (only programmatic selections should change zoom)
   useEffect(() => {
     if (!mapRef.current || !selectedSite) return
     const map = mapRef.current
     if (selectionByMarkerRef.current) {
-      // Marker click: do not change zoom; optional pan only
       map.panTo([selectedSite.latitude, selectedSite.longitude], { animate: true })
     } else {
-      // Programmatic (sidebar) selection: set view with desired zoom
       map.setView([selectedSite.latitude, selectedSite.longitude], 10, { animate: true })
     }
     selectionByMarkerRef.current = false
 
-    // Open popup for selected site
     const marker = markerInstancesRef.current.get(selectedSite.id)
     if (marker) {
       marker.openPopup()
