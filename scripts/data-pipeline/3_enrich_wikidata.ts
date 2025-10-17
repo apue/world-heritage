@@ -183,10 +183,30 @@ async function main() {
       }
 
       // Filter out components without valid coordinates
+      // Also filter out pseudo-components (same coordinates as property itself)
       const validComponents = components.filter((c) => {
         const lat = parseFloat(c.lat)
         const lon = parseFloat(c.lon)
-        return !isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0
+
+        // Check valid coordinates
+        if (isNaN(lat) || isNaN(lon) || lat === 0 || lon === 0) {
+          return false
+        }
+
+        // Filter out pseudo-components: coordinates identical to property
+        // Using tolerance of 0.0001 degrees (~11 meters) to account for floating point precision
+        const latDiff = Math.abs(lat - site.latitude)
+        const lonDiff = Math.abs(lon - site.longitude)
+        const TOLERANCE = 0.0001
+
+        if (latDiff < TOLERANCE && lonDiff < TOLERANCE) {
+          console.log(
+            `   🔍 Filtering pseudo-component for site ${site.idNumber}: ${c.componentLabel} (same coordinates as property)`
+          )
+          return false
+        }
+
+        return true
       })
 
       if (validComponents.length === 0) {

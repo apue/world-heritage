@@ -10,6 +10,7 @@ import ShareActions from '@/components/heritage/ShareActions'
 import SiteMiniMap from '@/components/map/SiteMiniMap'
 import SiteActionButtons from '@/components/heritage/SiteActionButtons'
 import ComponentVisitsPanel from '@/components/heritage/ComponentVisitsPanel'
+import PropertyCard from '@/components/heritage/PropertyCard'
 
 const localeCopy = {
   en: {
@@ -142,6 +143,9 @@ export default async function HeritageDetailPage({ params }: LocalizedPageProps<
       <div className="mx-auto mt-10 max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[2fr,1fr] lg:items-start">
           <article className="space-y-8">
+            {/* Property Card */}
+            <PropertyCard site={site} locale={locale} />
+
             <section>
               <h2 className="text-xl font-semibold text-gray-900">{copy.overview}</h2>
               <p className="mt-3 text-gray-700 leading-relaxed">{translation.description}</p>
