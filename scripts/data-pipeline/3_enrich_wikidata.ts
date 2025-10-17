@@ -312,7 +312,11 @@ async function main() {
     console.log(`\n💾 Writing output to: ${sitesPath}`)
     fs.writeFileSync(sitesPath, JSON.stringify(sites, null, 2), 'utf-8')
 
-    const fileSize = (fs.statSync(sitesPath).size / 1024 / 1024).toFixed(2)
+    const publicSitesPath = path.join(process.cwd(), 'public', 'sites.json')
+    console.log(`   ↳ Syncing public bundle: ${publicSitesPath}`)
+    fs.writeFileSync(publicSitesPath, JSON.stringify(sites, null, 2), 'utf-8')
+
+    const fileSize = (fs.statSync(publicSitesPath).size / 1024 / 1024).toFixed(2)
     console.log(`   ✓ File written: ${fileSize} MB`)
 
     console.log('\n' + '='.repeat(70))

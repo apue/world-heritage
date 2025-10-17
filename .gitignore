@@ -59,7 +59,8 @@ Thumbs.db
 # Data files
 /data/raw/          # Raw data sources (download separately)
 /data/processed/    # Intermediate processing results
-!/data/sites.json   # Keep final output
+/data/sites.json
+# Stage outputs (copied to public/sites.json for app use)
 
 # Python
 __pycache__/
